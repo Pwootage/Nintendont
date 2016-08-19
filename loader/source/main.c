@@ -130,12 +130,12 @@ static void updateMetaXml(void)
 	bool dir_argument_exists = strlen(launch_dir);
 	
 	snprintf(filepath, sizeof(filepath), "%smeta.xml",
-		dir_argument_exists ? launch_dir : "/apps/Nintendont/");
+		dir_argument_exists ? launch_dir : "/apps/Nintendont-prime/");
 
 	if (!dir_argument_exists) {
 		gprintf("Creating new directory\r\n");
 		f_mkdir_char("/apps");
-		f_mkdir_char("/apps/Nintendont");
+		f_mkdir_char("/apps/Nintendont-prime");
 	}
 
 	char new_meta[1024];

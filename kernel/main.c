@@ -40,6 +40,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "SDI.h"
 #include "ff_utf8.h"
 
+#include "PrimeMemoryDumping.h"
+
 //#undef DEBUG
 bool access_led = false;
 u32 USBReadTimer = 0;
@@ -58,6 +60,7 @@ extern u32 DI_MessageQueue;
 extern vu32 DisableSIPatch;
 extern char __bss_start, __bss_end;
 extern char __di_stack_addr, __di_stack_size;
+extern char __memoryDump_stack_addr, __memoryDump_stack_size;
 int _main( int argc, char *argv[] )
 {
 	//BSS is in DATA section so IOS doesnt touch it, we need to manually clear it
@@ -67,6 +70,7 @@ int _main( int argc, char *argv[] )
 
 	s32 ret = 0;
 	u32 DI_Thread = 0;
+	u32 memDumpThread = 0;
 
 	u8 MessageHeap[0x10];
 
@@ -206,6 +210,9 @@ int _main( int argc, char *argv[] )
 	DIRegister();
 	DI_Thread = thread_create(DIReadThread, NULL, ((u32*)&__di_stack_addr), ((u32)(&__di_stack_size)) / sizeof(u32), 0x78, 1);
 	thread_continue(DI_Thread);
+
+	memDumpThread = thread_create(PrimeMemoryDumpingThread, NULL, ((u32*)&__memoryDump_stack_addr), ((u32)(&__memoryDump_stack_size)) / sizeof(u32), 0x78, 1);
+	thread_continue(memDumpThread);
 
 	DIinit(true);
 
@@ -479,6 +486,7 @@ int _main( int argc, char *argv[] )
 		HIDClose();
 	IOS_Close(DI_Handle); //close game
 	thread_cancel(DI_Thread, 0);
+	thread_cancel(memDumpThread, 0);
 	DIUnregister();
 
 	/* reset time */

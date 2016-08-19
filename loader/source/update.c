@@ -167,7 +167,7 @@ static s32 Download(DOWNLOADS download_number)  {
 	bool dir_argument_exists = strlen(launch_dir);
 
 	snprintf(filepath, sizeof(filepath), "%s%s",
-		dir_argument_exists ? launch_dir : "/apps/Nintendont/",
+		dir_argument_exists ? launch_dir : "/apps/Nintendont-prime/",
 		Downloads[download_number].filename);
 	PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*line, Downloads[download_number].text);
 	UpdateScreen();
@@ -224,7 +224,7 @@ static s32 Download(DOWNLOADS download_number)  {
 	if (!dir_argument_exists) {
 		gprintf("Creating new directory\r\n");
 		f_mkdir_char("/apps");
-		f_mkdir_char("/apps/Nintendont");
+		f_mkdir_char("/apps/Nintendont-prime");
 	}
 
 	// Write the file to disk.
