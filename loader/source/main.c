@@ -200,7 +200,7 @@ void changeToDefaultDrive()
 	f_chdrive(primaryDevice);
 	f_chdir_char("/");
 }
-
+static s32 kdData[8] ALIGNED(32);
 int main(int argc, char **argv)
 {
 	// Exit after 10 seconds if there is an error
@@ -1098,6 +1098,15 @@ int main(int argc, char **argv)
 	fd = IOS_Open("/dev/net/kd/request", 0);
 	IOS_Ioctl(fd, IOCTL_ExecSuspendScheduler, NULL, 0, &out, 4);
 	IOS_Close(fd);
+
+	kdData[0] = -1;
+	s32 kdFd = IOS_Open("/dev/net/kd/request",0);
+	do
+	{
+		IOS_Ioctl(kdFd, 6, NULL, 0, kdData, 0x20);
+	}
+	while(kdData[0] < 0);
+	IOS_Close(kdFd);
 
 	write16(0xD8B420A, 0); //disable MEMPROT again after reload
 	//u32 level = IRQ_Disable();

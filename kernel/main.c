@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "debug.h"
 #include "GCAM.h"
 #include "Patch.h"
-
+#include "net.h"
 #include "diskio.h"
 #include "usbstorage.h"
 #include "SDI.h"
@@ -61,6 +61,7 @@ extern vu32 DisableSIPatch;
 extern char __bss_start, __bss_end;
 extern char __di_stack_addr, __di_stack_size;
 extern char __memoryDump_stack_addr, __memoryDump_stack_size;
+extern char __net_stack_addr, __net_stack_size;
 int _main( int argc, char *argv[] )
 {
 	//BSS is in DATA section so IOS doesnt touch it, we need to manually clear it
@@ -69,7 +70,7 @@ int _main( int argc, char *argv[] )
 	sync_after_write(&__bss_start, &__bss_end - &__bss_start);
 
 	s32 ret = 0;
-	u32 DI_Thread = 0;
+	u32 DI_Thread = 0, Net_Thread = 0;
 	u32 memDumpThread = 0;
 
 	u8 MessageHeap[0x10];
@@ -211,10 +212,13 @@ int _main( int argc, char *argv[] )
 	DI_Thread = thread_create(DIReadThread, NULL, ((u32*)&__di_stack_addr), ((u32)(&__di_stack_size)) / sizeof(u32), 0x78, 1);
 	thread_continue(DI_Thread);
 
+	DIinit(true);
+
 	memDumpThread = thread_create(PrimeMemoryDumpingThread, NULL, ((u32*)&__memoryDump_stack_addr), ((u32)(&__memoryDump_stack_size)) / sizeof(u32), 0x78, 1);
 	thread_continue(memDumpThread);
 
-	DIinit(true);
+	Net_Thread = thread_create(NetThread, NULL, ((u32*)&__net_stack_addr), ((u32)(&__net_stack_size)) / sizeof(u32), 0x78, 1);
+	thread_continue(Net_Thread);
 
 	BootStatus(10, s_size, s_cnt);
 
@@ -486,9 +490,9 @@ int _main( int argc, char *argv[] )
 		HIDClose();
 	IOS_Close(DI_Handle); //close game
 	thread_cancel(DI_Thread, 0);
-	thread_cancel(memDumpThread, 0);
 	DIUnregister();
-
+	thread_cancel(memDumpThread, 0);
+	thread_cancel(Net_Thread, 0);
 	/* reset time */
 	while(1)
 	{
