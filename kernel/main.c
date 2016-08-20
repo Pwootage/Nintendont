@@ -71,7 +71,6 @@ int _main( int argc, char *argv[] )
 
 	s32 ret = 0;
 	u32 DI_Thread = 0, Net_Thread = 0;
-	u32 memDumpThread = 0;
 
 	u8 MessageHeap[0x10];
 
@@ -213,9 +212,6 @@ int _main( int argc, char *argv[] )
 	thread_continue(DI_Thread);
 
 	DIinit(true);
-
-	memDumpThread = thread_create(PrimeMemoryDumpingThread, NULL, ((u32*)&__memoryDump_stack_addr), ((u32)(&__memoryDump_stack_size)) / sizeof(u32), 0x78, 1);
-	thread_continue(memDumpThread);
 
 	Net_Thread = thread_create(NetThread, NULL, ((u32*)&__net_stack_addr), ((u32)(&__net_stack_size)) / sizeof(u32), 0x78, 1);
 	thread_continue(Net_Thread);
@@ -491,7 +487,6 @@ int _main( int argc, char *argv[] )
 	IOS_Close(DI_Handle); //close game
 	thread_cancel(DI_Thread, 0);
 	DIUnregister();
-	thread_cancel(memDumpThread, 0);
 	thread_cancel(Net_Thread, 0);
 	/* reset time */
 	while(1)
