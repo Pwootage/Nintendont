@@ -3,6 +3,7 @@
 #include "string.h"
 #include "net.h"
 #include "PrimeMemoryDumping.h"
+#include "Config.h"
 
 //Defines taken from libogc's network.h and network_wii.c
 
@@ -116,9 +117,14 @@ void NetInit() {
     mdelay(100);
 }
 
-u32 NetThread(void *arg) {
+u32 NetThread(void *arg) {\
   while (!netStart)
     mdelay(100);
+
+  if (!ConfigGetConfig(NIN_CFG_PRIME_DUMP)) {
+    netStart = 0;
+    return 0;
+  }
 
   char *soDev = "/dev/net/ip/top";
   void *name = heap_alloc_aligned(0, 32, 32);

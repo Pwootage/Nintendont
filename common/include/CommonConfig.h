@@ -47,7 +47,7 @@ enum ninconfigbitpos
 	NIN_CFG_BIT_MC_MULTI	= (13),
 	NIN_CFG_BIT_NATIVE_SI	= (14),
 	NIN_CFG_BIT_WIIU_WIDE	= (15),
-	NIN_CFG_BIT_PRIME_DUMP = (16),
+	NIN_CFG_BIT_PRIME_DUMP = (30), //Offset to hopefully not run into official config later on (since it uses the same config file)
 };
 
 enum ninconfig
