@@ -346,7 +346,7 @@ int _main( int argc, char *argv[] )
 		}
 		else /* No device I/O so make sure this stays updated */
 			GetCurrentTime();
-		udelay(20); //wait for other threads
+		udelay(200); //wait for other threads
 
 		if( WaitForRealDisc == 1 )
 		{

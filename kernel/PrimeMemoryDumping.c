@@ -14,12 +14,10 @@
 void primeMemoryDump(PrimeMemoryDump *dest) {
   u32 gameID = read32FromGCMemory(0x00);
   u16 makerID = read16FromGCMemory(0x04);
-//  u32 gameID = PRIME_1_GAMEID;
-//  u16 makerID = PRIME_1_MAKERID;
 
   dest->gameid = gameID;
   dest->makerid = makerID;
-  dest->type = PACKET_TYPE_RAW_DISC_INVALID;
+  dest->type = PACKET_TYPE_INVALID;
 
   if (gameID == PRIME_1_GAMEID && makerID == PRIME_1_MAKERID) {
     u32 playerStatusPtr = read32FromGCMemory(0x4578CC);

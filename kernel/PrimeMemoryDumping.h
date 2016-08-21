@@ -12,7 +12,7 @@
 
 #define PACKET_TYPE_GAME_DATA (0x1)
 #define PACKET_TYPE_RAW_DISC_READ (0x2)
-#define PACKET_TYPE_RAW_DISC_INVALID (0xFF)
+#define PACKET_TYPE_INVALID (0xFF)
 #define INVENTORY_SIZE (0x29)
 
 #pragma pack(push,1)
