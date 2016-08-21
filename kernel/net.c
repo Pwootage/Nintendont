@@ -12,7 +12,14 @@
 
 #define INADDR_ANY 0
 #define INADDR_BROADCAST 0xffffffff
-#define IPPROTO_IP 0
+
+#define IPPROTO_IP      0
+#define IPPROTO_TCP      6
+#define IPPROTO_UDP      17
+#define  SOL_SOCKET      0xfff
+
+#define  TCP_NODELAY     0x01
+#define TCP_KEEPALIVE  0x02
 
 #define SOCK_STREAM 1
 #define SOCK_DGRAM 2
@@ -48,10 +55,10 @@
 #define SO_ERROR 0x1007 /* get error status and clear */
 #define SO_TYPE 0x1008 /* get socket type */
 
-#define MSG_DONTWAIT		0x40
+#define MSG_DONTWAIT    0x40
 
 enum {
-    IOCTL_SO_ACCEPT	= 1,
+    IOCTL_SO_ACCEPT = 1,
     IOCTL_SO_BIND,
     IOCTL_SO_CLOSE,
     IOCTL_SO_CONNECT,
@@ -82,7 +89,7 @@ enum {
     IOCTLV_SO_SETINTERFACEOPT, // todo
     IOCTL_SO_SETINTERFACE,     // todo
     IOCTL_SO_STARTUP,           // 0x1f
-    IOCTL_SO_ICMPSOCKET =	0x30, // todo
+    IOCTL_SO_ICMPSOCKET = 0x30, // todo
     IOCTLV_SO_ICMPPING,         // todo
     IOCTL_SO_ICMPCANCEL,        // todo
     IOCTL_SO_ICMPCLOSE          // todo
@@ -109,6 +116,14 @@ struct sendto_params {
     struct address addr;
 };
 
+struct setsockopt_params {
+    u32 socket;
+    u32 level;
+    u32 optname;
+    u32 optlen;
+    u8 optval[20];
+};
+
 u32 netStart = 0;
 
 void NetInit() {
@@ -117,7 +132,7 @@ void NetInit() {
     mdelay(100);
 }
 
-u32 NetThread(void *arg) {\
+u32 NetThread(void *arg) {
   while (!netStart)
     mdelay(100);
 
@@ -205,7 +220,7 @@ u32 NetThread(void *arg) {\
           break; //Something went wrong
         }
       }
-      mdelay(100);
+      mdelay(10);
     }
 
     //Socket disconnected; cleanup

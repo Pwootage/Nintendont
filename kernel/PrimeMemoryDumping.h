@@ -22,6 +22,8 @@ typedef struct PrimeMemoryDump {
     u16 makerid;
     u32 speed[3];
     u32 pos[3];
+    u32 worldID;
+    u32 worldStatus;
     u32 room;
     u32 health;
     u32 inventory[INVENTORY_SIZE*2];

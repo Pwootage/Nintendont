@@ -21,6 +21,7 @@ void primeMemoryDump(PrimeMemoryDump *dest) {
 
   if (gameID == PRIME_1_GAMEID && makerID == PRIME_1_MAKERID) {
     u32 playerStatusPtr = read32FromGCMemory(0x4578CC);
+    u32 currentWorldPtr = read32FromGCMemory(0x4578CC);
 
     dest->type = PACKET_TYPE_GAME_DATA;
     dest->speed[0] = read32FromGCMemory(0x46BAB4);
@@ -29,6 +30,8 @@ void primeMemoryDump(PrimeMemoryDump *dest) {
     dest->pos[0] = read32FromGCMemory(0x46B9BC);
     dest->pos[1] = read32FromGCMemory(0x46B9CC);
     dest->pos[2] = read32FromGCMemory(0x46B9DC);
+    dest->worldID = read32FromGCMemory(currentWorldPtr + 0x08);
+    dest->worldStatus = read32FromGCMemory(currentWorldPtr + 0x04);
     dest->room = read32FromGCMemory(0x45AA74);
     dest->health = read32FromGCMemory(playerStatusPtr + 0x2AC);
     u32 i;
