@@ -23,6 +23,10 @@ void primeMemoryDump(PrimeMemoryDump *dest) {
     u32 playerStatusPtr = read32FromGCMemory(0x4578CC);
     u32 currentWorldPtr = read32FromGCMemory(0x45A9F8);
 
+    u32 cPlayerPtr = read32FromGCMemory(0x46B97C);
+    u32 playerCollisionPrimitvePtr = cPlayerPtr + 0x1c0;
+    u32 playerAABBPtr = playerCollisionPrimitvePtr + 0x10;
+
     dest->type = PACKET_TYPE_GAME_DATA;
     dest->speed[0] = read32FromGCMemory(0x46BAB4);
     dest->speed[1] = read32FromGCMemory(0x46BAB8);
@@ -30,6 +34,12 @@ void primeMemoryDump(PrimeMemoryDump *dest) {
     dest->pos[0] = read32FromGCMemory(0x46B9BC);
     dest->pos[1] = read32FromGCMemory(0x46B9CC);
     dest->pos[2] = read32FromGCMemory(0x46B9DC);
+    dest->playerAABB[0] = read32FromGCMemory(playerAABBPtr + 0x0);
+    dest->playerAABB[1] = read32FromGCMemory(playerAABBPtr + 0x4);
+    dest->playerAABB[2] = read32FromGCMemory(playerAABBPtr + 0x8);
+    dest->playerAABB[3] = read32FromGCMemory(playerAABBPtr + 0xC);
+    dest->playerAABB[4] = read32FromGCMemory(playerAABBPtr + 0x10);
+    dest->playerAABB[5] = read32FromGCMemory(playerAABBPtr + 0x14);
     dest->worldID = read32FromGCMemory(currentWorldPtr + 0x08);
     dest->worldStatus = read32FromGCMemory(currentWorldPtr + 0x04);
     dest->room = read32FromGCMemory(0x45AA74);
