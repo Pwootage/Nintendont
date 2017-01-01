@@ -4,7 +4,7 @@ import struct
 import socket
 import datetime
 
-host = '192.168.1.210'
+host = '192.168.1.187'
 port = 43673
 
 mapIP = "127.0.0.1"
