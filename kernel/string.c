@@ -136,6 +136,19 @@ char *strchr(const char *s, int c)
 	} while(*s++ != 0);
 	return NULL;
 }
+
+void *memchr(const void* ptr, int ch, size_t count)
+{
+	char* c = (char*) ptr;
+	size_t i;
+	for (i = 0; i < count; i++) {
+		if (c[i] == ch) {
+			return (void*)&c[i];
+		}
+	}
+	return NULL;
+}
+
 #ifdef DEBUG
 static char ascii(char s) {
   if(s < 0x20) return '.';

@@ -2,6 +2,7 @@
 
 PREFIX	:= $(DEVKITARM)/bin/arm-none-eabi-
 CC	:= $(PREFIX)gcc
+CXX	:= $(PREFIX)g++
 AS	:= $(PREFIX)as
 LD	:= $(PREFIX)gcc
 STRIP	:= $(PREFIX)strip
@@ -12,11 +13,13 @@ else
 	ZIP = zip
 endif
 
-CFLAGS	:= -mbig-endian -O3 -std=gnu89 -g -I. -Wall \
+COMMONFLAGS := -mbig-endian -O3 -g -I. -Wall \
 	   -mcpu=arm926ej-s -msoft-float -mfloat-abi=soft \
 	   -fdata-sections -ffunction-sections -fno-builtin-toupper -fno-builtin-memcpy \
 	   -fno-builtin-memset -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free
+CFLAGS	 := -std=gnu89
 CPPFLAGS := -I. -I../fatfs
+CXXFLAGS := -std=c++11
 
 ASFLAGS	:= -mbig-endian -mcpu=arm926ej-s
 LDFLAGS	:= -nostartfiles -nodefaultlibs -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n
@@ -26,7 +29,15 @@ OBJECTS	:= start.o common.o alloc.o GCAM.o JVSIO.o JVSIOMessage.o FST.o DI.o Rea
 	   Patch.o PatchTimers.o TRI.o PatchWidescreen.o ISO.o Stream.o adp.o \
 	   EXI.o SRAM.o SI.o HID.o diskio.o Config.o utils_asm.o ES.o NAND.o \
 	   main.o syscalls.o ReadSpeed.o vsprintf.o string.o prs.o \
-	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o
+	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o \
+	   bson-cxx/src/bson/time_support.o \
+	   bson-cxx/src/bson/json.o \
+	   bson-cxx/src/bson/base64.o \
+	   bson-cxx/src/bson/parse_number.o \
+	   bson-cxx/src/bson/hex.o \
+	   bson-cxx/src/bson/valid.o \
+	   bson-cxx/src/bson/bson.o
+
 LIBS	:= ../fatfs/libfatfs-arm.a be/libc.a be/libgcc.a
 ZIPFILE	:= ../loader/data/kernel.zip
 
@@ -48,15 +59,19 @@ $(TARGET): kernel.ld $(OBJECTS)
 
 %.o: %.s
 	@echo  "AS	$@"
-	@$(CC) $(CFLAGS) $(CPPFLAGS) -D_LANGUAGE_ASSEMBLY -c -MMD -MP -MF $(@:.o=.d) -x assembler-with-cpp -o $@ $<
+	@$(CC) $(COMMONFLAGS) $(CFLAGS) $(CPPFLAGS) -D_LANGUAGE_ASSEMBLY -c -MMD -MP -MF $(@:.o=.d) -x assembler-with-cpp -o $@ $<
 
 %.o: %.S
 	@echo  "AS	$@"
-	@$(CC) $(CFLAGS) $(CPPFLAGS) -D_LANGUAGE_ASSEMBLY -c -MMD -MP -MF $(@:.o=.d) -x assembler-with-cpp -o $@ $<
+	@$(CC) $(COMMONFLAGS) $(CFLAGS) $(CPPFLAGS) -D_LANGUAGE_ASSEMBLY -c -MMD -MP -MF $(@:.o=.d) -x assembler-with-cpp -o $@ $<
 
 %.o : %.c
 	@echo  "CC	$@"
-	@$(CC) $(CFLAGS) $(CPPFLAGS) -c -MMD -MP -MF $(@:.o=.d) -o $@ $<
+	@$(CC) $(COMMONFLAGS) $(CFLAGS) $(CPPFLAGS) -c -MMD -MP -MF $(@:.o=.d) -o $@ $<
+
+%.o : %.cpp
+	@echo  "CXX	$@"
+	@$(CXX) $(COMMONFLAGS) $(CXXFLAGS) $(CPPFLAGS) -c -MMD -MP -MF $(@:.o=.d) -o $@ $<
 
 clean:
-	-rm -f $(ZIPFILE) *.elf *.o *.bin *.d *.map lwbt/*.d lwbt/*.o option/*.d option/*.o
+	-rm -f $(ZIPFILE) *.elf *.o *.bin *.d *.map lwbt/*.d lwbt/*.o option/*.d option/*.o bson-cxx/src/bson/*.o

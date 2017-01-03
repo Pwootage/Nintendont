@@ -37,8 +37,10 @@
 #define ALIGN_FORWARD(x,align) \
 	((typeof(x))((((u32)(x)) + (align) - 1) & (~(align-1))))
 
+#ifndef __cplusplus
 #define ALIGN_BACKWARD(x,align) \
 	((typeof(x))(((u32)(x)) & (~(align-1))))
+#endif
 
 #define LINESIZE 0x20
 #define CACHESIZE 0x4000
@@ -67,7 +69,9 @@ typedef unsigned short uint16_t;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 
+#ifndef __cplusplus
 typedef int bool;
+#endif
 typedef unsigned int sec_t;
 
 typedef signed char s8;
@@ -89,12 +93,18 @@ typedef volatile signed long long vs64;
 // Includes 32-bit wchar_t.
 #include <stddef.h>
 
+typedef long int time_t;
+
 typedef s32(*ipccallback)(s32 result,void *usrdata);
 
+#ifndef __cplusplus
 #include "ipc.h"
+#endif
 #include "syscalls.h"
 
+#ifndef __cplusplus
 #define NULL ((void *)0)
+#endif
 
 #define ALIGNED(x) __attribute__((aligned(x)))
 #define NORETURN __attribute__ ((noreturn))
@@ -194,7 +204,11 @@ enum
 	TRI_VS4,
 	TRI_YAK,
 	TRI_SB,
+#ifdef __cplusplus
+};
+#else
 } TRIGames;
+#endif
 
 typedef struct
 {
@@ -337,6 +351,7 @@ static inline u32 IsGCGame(u32 Buffer)
 	return (AMB1 == 0x414D4231 || GCMagic == 0xC2339F3D);
 }
 
+#ifndef __cplusplus
 static inline void sync_before_read_align32(void *Buf, u32 Len)
 {
 	void *BufA = ALIGN_BACKWARD(Buf, 0x20);
@@ -350,6 +365,7 @@ static inline void sync_after_write_align32(void *Buf, u32 Len)
 	u32 LenDiff = (u32)Buf - (u32)BufA;
 	sync_after_write(BufA, ALIGN_FORWARD(Len + LenDiff, 0x20));
 }
+#endif
 
 #define RESET_STATUS 0x13003420
 
