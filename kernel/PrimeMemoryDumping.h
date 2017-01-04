@@ -5,6 +5,7 @@
 #ifndef NINTENDONT_PRIMEMEMORYDUMPING_H
 #define NINTENDONT_PRIMEMEMORYDUMPING_H
 
+#include <memory>
 #include "string.h"
 #include "global.h"
 #include "common.h"
@@ -16,7 +17,7 @@
 #define INVENTORY_SIZE (0x29)
 
 #pragma pack(push,1)
-typedef struct PrimeMemoryDump {
+class PrimeMemoryDump {
 //    union {
 //        struct {
 //            u8 type;
@@ -24,6 +25,7 @@ typedef struct PrimeMemoryDump {
 //            char* data;
 //        };
 //    };
+public:
     u8 type;
     u32 gameid;
     u16 makerid;
@@ -39,20 +41,14 @@ typedef struct PrimeMemoryDump {
     u32 health;
     u32 inventory[INVENTORY_SIZE*2];
     u64 timer;
-} PrimeMemoryDump;
+};
 #pragma pack(pop)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-void primeMemoryDump(PrimeMemoryDump *dest);
+std::unique_ptr<PrimeMemoryDump> primeMemoryDump();
 float readFloatFromGCMemory(u32 addr);
 u64 read64FromGCMemory(u32 addr);
 u32 read32FromGCMemory(u32 addr);
 u16 read16FromGCMemory(u32 addr);
 u8 read8FromGCMemory(u32 addr);
-#ifdef __cplusplus
-};
-#endif
 
 #endif //NINTENDONT_PRIMEMEMORYDUMPING_H

@@ -4,7 +4,7 @@ PREFIX	:= $(DEVKITARM)/bin/arm-none-eabi-
 CC	:= $(PREFIX)gcc
 CXX	:= $(PREFIX)g++
 AS	:= $(PREFIX)as
-LD	:= $(PREFIX)gcc
+LD	:= $(PREFIX)g++
 STRIP	:= $(PREFIX)strip
 
 ifeq ($(windows), 1)
@@ -16,21 +16,23 @@ endif
 COMMONFLAGS := -mbig-endian -O3 -I. -Wall \
 		-mcpu=arm926ej-s -msoft-float -mfloat-abi=soft \
 		-fdata-sections -ffunction-sections -fno-builtin-toupper -fno-builtin-memcpy \
-		-fno-builtin-memset -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free
+		-fno-builtin-memset -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free \
+		-fno-exceptions
 CFLAGS	 := -std=gnu89
 CPPFLAGS := -I. -I../fatfs
 CXXFLAGS := -std=c++11 -Wno-unknown-pragmas -Wno-pragmas -Wno-missing-declarations -Wno-shadow \
 		-Wno-unused-variable -Wno-strict-aliasing
 
 ASFLAGS	:= -mbig-endian -mcpu=arm926ej-s
-LDFLAGS	:= -nostartfiles -nodefaultlibs -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n
+LDFLAGS	:= -nostartfiles -nodefaultlibs -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n -lstdc++ -lsupc++ \
+            -fno-exceptions
 
 TARGET	:= kernel.elf
 OBJECTS	:= start.o common.o alloc.o GCAM.o JVSIO.o JVSIOMessage.o FST.o DI.o RealDI.o \
 	   Patch.o PatchTimers.o TRI.o PatchWidescreen.o ISO.o Stream.o adp.o \
 	   EXI.o SRAM.o SI.o HID.o diskio.o Config.o utils_asm.o ES.o NAND.o \
 	   main.o syscalls.o ReadSpeed.o vsprintf.o string.o prs.o \
-	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o \
+	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o new.o \
 	   bson-cxx/src/bson/time_support.o \
 	   bson-cxx/src/bson/json.o \
 	   bson-cxx/src/bson/base64.o \

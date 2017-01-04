@@ -83,14 +83,14 @@ namespace _bson {
         ss << "bsonobj size: " << os << " (0x" << integerToHex( os ) << ") is invalid. "
            << "Size must be between 0 and " << BSONObjMaxInternalSize
            << "(" << ( BSONObjMaxInternalSize/(1024*1024) ) << "MB)";
-        try {
+//        try {
             bsonelement e = firstElement();
             ss << " First element: " << e.toString();
-        }
-        catch ( ... ) { }
+//        }
+//        catch ( ... ) { }
         massert( 10334 , ss.str() , 0 );
     }
-    
+
     /* add all the fields from the object specified to this object if they don't exist */
     inline bool bsonobj::isValid() const {
         int x = objsize();

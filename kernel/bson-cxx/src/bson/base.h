@@ -21,7 +21,7 @@ namespace _bson {
     inline void uassert(unsigned, std::string, bool x) {
         assert(x);
     }
-    inline void msgasserted(unsigned x, std::string s) { throw MsgAssertionException(x, s); }
+    inline void msgasserted(unsigned x, std::string s) { assert(x); }
     inline void massert(unsigned a, const char *b, bool x) {
         if (!x) msgasserted(a, std::string(b));
     }

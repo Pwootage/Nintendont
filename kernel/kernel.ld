@@ -4,12 +4,12 @@ EXTERN(_start)
 ENTRY(_start)
 
 __stack_size = 0x2000;
-__phy_stack_addr = 0x12FF7000 + __stack_size;
+__phy_stack_addr = 0x12FF0000 + __stack_size;
 
 __di_stack_size = 0x1000;
 __di_stack_addr = __phy_stack_addr + __di_stack_size;
 
-__net_stack_size = 0x1000;
+__net_stack_size = 0x4000;
 __net_stack_addr = __di_stack_addr + __net_stack_size;
 
 __realdi_stack_size = 0x400;
@@ -31,14 +31,14 @@ MEMORY {
 
 	code		: ORIGIN = 0x20F00000,	LENGTH = 0x80000
 	data		: ORIGIN = 0x20F80000,	LENGTH = 0x70000
-	stack		: ORIGIN = 0x20106000,	LENGTH = 0x09000
+	stack		: ORIGIN = 0x20106000,	LENGTH = 0x10000
 }
 
 PHDRS
 {
 	code  PT_LOAD AT ( 0x12F00000 );
 	data  PT_LOAD AT ( 0x12F80000 );
-	stack PT_LOAD AT ( 0x12FF7000 );
+	stack PT_LOAD AT ( 0x12FF0000 );
 }
 
 SECTIONS
@@ -65,6 +65,13 @@ SECTIONS
         __exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
         __exidx_end = .;
+    } >code :code
+
+    .ARM.extab (0x20F00000 + SIZEOF(.init) + SIZEOF(.text) + SIZEOF(.ARM.exidx)) : AT( 0x12F00000 + SIZEOF(.init) + SIZEOF(.text) + SIZEOF(.ARM.exidx))
+    {
+        __extab_start = .;
+        *(.ARM.extab* .gnu.linkonce.extab.*)
+        __extab_end = .;
     } >code :code
 
 	.rodata (0x20F80000) : AT( 0x12F80000 )
@@ -96,7 +103,7 @@ SECTIONS
 		__bss_end = . ;
 	} >data :data
 
-	.stack (0x20106000) : AT( 0x12FF7000 )
+	.stack (0x20106000) : AT( 0x12FF0000 )
 	{
 		__stack_end = .;
 		. = . +__stack_size;

@@ -11,7 +11,10 @@
 #define PRIME_1_GAMEID (0x474D3845)
 #define PRIME_1_MAKERID (0x3031)
 
-void primeMemoryDump(PrimeMemoryDump *dest) {
+using namespace std;
+
+unique_ptr<PrimeMemoryDump> primeMemoryDump() {
+  unique_ptr<PrimeMemoryDump> dest(new PrimeMemoryDump);
   u32 gameID = read32FromGCMemory(0x00);
   u16 makerID = read16FromGCMemory(0x04);
 
@@ -70,6 +73,8 @@ void primeMemoryDump(PrimeMemoryDump *dest) {
     }
     dest->timer = read64FromGCMemory(playerStatusPtr + 0xA0);
   }
+
+  return dest;
 };
 
 float readFloatFromGCMemory(u32 addr) {
@@ -77,8 +82,12 @@ float readFloatFromGCMemory(u32 addr) {
   if (INVALID_PTR(actualPtr)) {
     return 0;
   }
-  u32 res = read32(GET_PTR(actualPtr));
-  return *((float *) (&res));
+  union {
+      u32 i;
+      float f;
+  };
+  i = read32(GET_PTR(actualPtr));
+  return f;
 }
 
 u64 read64FromGCMemory(u32 addr) {

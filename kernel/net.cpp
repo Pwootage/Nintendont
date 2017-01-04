@@ -5,6 +5,8 @@
 #include "PrimeMemoryDumping.h"
 #include "Config.h"
 
+using namespace std;
+
 //Defines taken from libogc's network.h and network_wii.c
 
 #define INVALID_SOCKET  (~0)
@@ -201,7 +203,6 @@ u32 NetThread(void *arg) {
 
   struct sendto_params *sParams = reinterpret_cast<struct sendto_params *>(heap_alloc_aligned(0, sizeof(struct sendto_params), 32));
   struct ioctlv *sendVec = reinterpret_cast<struct ioctlv *>(heap_alloc_aligned(0, sizeof(ioctlv) * 2, 32));
-  PrimeMemoryDump *msg = (PrimeMemoryDump *) heap_alloc_aligned(0, sizeof(struct PrimeMemoryDump), 32);
 
   while (1) {
     //SOAccept
@@ -218,14 +219,16 @@ u32 NetThread(void *arg) {
     sParams->has_destaddr = 0;
 
     while (1) {
-      primeMemoryDump(msg);
+      unique_ptr<PrimeMemoryDump> dump = primeMemoryDump();
+      char *buff = reinterpret_cast<char*>(heap_alloc_aligned(0, sizeof(PrimeMemoryDump), 32));
+      memcpy(buff, dump.get(), sizeof(PrimeMemoryDump));
 
-      sendVec[0].data = msg;
+      sendVec[0].data = buff;
       sendVec[0].len = sizeof(PrimeMemoryDump);
       sendVec[1].data = sParams;
       sendVec[1].len = sizeof(struct sendto_params);
 
-      if (msg->type != PACKET_TYPE_INVALID) {
+      if (dump->type != PACKET_TYPE_INVALID) {
         //SOSendTo
         s32 err = IOS_Ioctlv(soFd, IOCTLV_SO_SENDTO, 2, 0, sendVec);
 
@@ -233,6 +236,7 @@ u32 NetThread(void *arg) {
           break; //Something went wrong
         }
       }
+      heap_free(0, buff);
       mdelay(10);
     }
 

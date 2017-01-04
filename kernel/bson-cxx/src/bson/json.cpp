@@ -1282,20 +1282,24 @@ namespace _bson {
 
         JParse jparse(i);
         Status ret = Status::OK();
-        try {
+//        try {
             ret = jparse.object("UNUSED", builder, false);
-        }
-        catch(std::exception& e) {
-            std::ostringstream message;
-            message << "caught exception from within JSON parser: " << e.what();
-            throw MsgAssertionException(17031, message.str());
-        }
+//        }
+//        catch(std::exception& e) {
+//            std::ostringstream message;
+//            message << "caught exception from within JSON parser: " << e.what();
+//            bsonobjbuilder err;
+//            err.append("error", message.str());
+//            return err.obj();
+//        }
 
         if (ret != Status::OK()) {
             ostringstream message;
             message << "parse error - " << ret.codeString(); // << ": " << ret.reason();
             string s = message.str();
-            throw MsgAssertionException(16619, s);
+            bsonobjbuilder err;
+            err.append("error", message.str());
+            return err.obj();
         }
         doc_number++;
         return builder.obj();

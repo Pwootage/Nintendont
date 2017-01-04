@@ -102,7 +102,7 @@ namespace _bson {
 
     inline StringData StringData::substr( size_t pos, size_t n ) const {
         if ( pos > size() )
-            throw std::out_of_range( "out of range" );
+            return *this;
 
         // truncate to end of string
         if ( n > size() - pos )
