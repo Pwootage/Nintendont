@@ -6,7 +6,7 @@
 #include "common.h"
 #include "vsprintf.h"
 
-#ifdef _cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 char *strcpy(char *, const char *);
@@ -22,7 +22,7 @@ int memcmp(const void *s1, const void *s2, size_t n);
 void *memset(void *dst, int x, size_t n);
 extern void memcpy(void *dst, const void *src, u32 size);
 void* memchr(const void* ptr, int ch, size_t count);
-#ifdef _cplusplus
+#ifdef __cplusplus
 }
 #endif
 

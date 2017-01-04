@@ -168,7 +168,7 @@ void InsertModule( char *Module, u32 ModuleSize )
 						gprintf("  N:Type:%X Offset:%08X VAdr:%08X PAdr:%08X FSz:%08X MSz:%08X\r\n", (ophdr->p_type), (ophdr->p_offset), (ophdr->p_vaddr), (ophdr->p_paddr), (ophdr->p_filesz), (ophdr->p_memsz) );
 #endif
 						break;
-					} else if( (ophdr->p_vaddr) == 0x2010D000 && (phdr->p_vaddr) == 0x20F38000 )
+					} else if( (ophdr->p_vaddr) == 0x2010D000 && (phdr->p_vaddr) == 0x20F80000 )
 					{
 #ifdef DEBUG_MODULE_PATCH
 						gprintf("  O:Type:%X Offset:%08X VAdr:%08X PAdr:%08X FSz:%08X MSz:%08X\r\n", (ophdr->p_type), (ophdr->p_offset), (ophdr->p_vaddr), (ophdr->p_paddr), (ophdr->p_filesz), (ophdr->p_memsz) );

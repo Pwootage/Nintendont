@@ -17,6 +17,13 @@
 
 #pragma pack(push,1)
 typedef struct PrimeMemoryDump {
+//    union {
+//        struct {
+//            u8 type;
+//            u32 len;
+//            char* data;
+//        };
+//    };
     u8 type;
     u32 gameid;
     u16 makerid;
@@ -35,11 +42,17 @@ typedef struct PrimeMemoryDump {
 } PrimeMemoryDump;
 #pragma pack(pop)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void primeMemoryDump(PrimeMemoryDump *dest);
 float readFloatFromGCMemory(u32 addr);
 u64 read64FromGCMemory(u32 addr);
 u32 read32FromGCMemory(u32 addr);
 u16 read16FromGCMemory(u32 addr);
 u8 read8FromGCMemory(u32 addr);
+#ifdef __cplusplus
+};
+#endif
 
 #endif //NINTENDONT_PRIMEMEMORYDUMPING_H

@@ -124,6 +124,19 @@ struct setsockopt_params {
     u8 optval[20];
 };
 
+struct ioctl_vector
+{
+    void *data;
+    unsigned int len;
+} __attribute__((packed));
+
+/* IOCTL vector */
+struct ioctlv
+{
+    void *data;
+    u32   len;
+};
+
 u32 netStart = 0;
 
 void NetInit() {
@@ -141,8 +154,8 @@ u32 NetThread(void *arg) {
     return 0;
   }
 
-  char *soDev = "/dev/net/ip/top";
-  void *name = heap_alloc_aligned(0, 32, 32);
+  const char *soDev = "/dev/net/ip/top";
+  char *name = reinterpret_cast<char*>(heap_alloc_aligned(0, 32, 32));
   memcpy(name, soDev, 32);
   int soFd = IOS_Open(name, 0);
   heap_free(0, name);
@@ -186,9 +199,9 @@ u32 NetThread(void *arg) {
   //*(volatile unsigned int*)0x120F0000 = ip;
   //sync_after_write((void*)0x120F0000, 0x20);
 
-  struct sendto_params *sParams = (struct sendto_params *) heap_alloc_aligned(0, sizeof(struct sendto_params), 32);
+  struct sendto_params *sParams = reinterpret_cast<struct sendto_params *>(heap_alloc_aligned(0, sizeof(struct sendto_params), 32));
+  struct ioctlv *sendVec = reinterpret_cast<struct ioctlv *>(heap_alloc_aligned(0, sizeof(ioctlv) * 2, 32));
   PrimeMemoryDump *msg = (PrimeMemoryDump *) heap_alloc_aligned(0, sizeof(struct PrimeMemoryDump), 32);
-  ioctlv *sendVec = (ioctlv *) heap_alloc_aligned(0, sizeof(ioctlv) * 2, 32);
 
   while (1) {
     //SOAccept
@@ -204,13 +217,13 @@ u32 NetThread(void *arg) {
     sParams->flags = 0;
     sParams->has_destaddr = 0;
 
-    sendVec[0].data = msg;
-    sendVec[0].len = sizeof(PrimeMemoryDump);
-    sendVec[1].data = sParams;
-    sendVec[1].len = sizeof(struct sendto_params);
-
     while (1) {
       primeMemoryDump(msg);
+
+      sendVec[0].data = msg;
+      sendVec[0].len = sizeof(PrimeMemoryDump);
+      sendVec[1].data = sParams;
+      sendVec[1].len = sizeof(struct sendto_params);
 
       if (msg->type != PACKET_TYPE_INVALID) {
         //SOSendTo

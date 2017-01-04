@@ -14,6 +14,11 @@
 #define STATUS_GB_MB	(*(vu32*)(0x10004100 + 16))
 #define STATUS_ERROR	(*(vu32*)(0x10004100 + 20))
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void *memset8( void *dst, int x, size_t len );
 extern void *memset16( void *dst, int x, size_t len );
 extern void *memset32( void *dst, int x, size_t len );
@@ -46,7 +51,7 @@ static inline u16 R16(u32 Address)
 {
 	return R32(Address) >> 16;
 }
- 
+
 void W32(u32 Address, u32 Data);
 static inline void W16(u32 Address, u16 Data)
 {
@@ -57,5 +62,9 @@ static inline void W16(u32 Address, u16 Data)
 void wait_for_ppc(u8 multi);
 void InitCurrentTime();
 u32 GetCurrentTime();
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

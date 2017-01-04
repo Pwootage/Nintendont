@@ -229,3 +229,8 @@ u32 GetCurrentTime()
 	timeStarlet = curtime;
 	return timeBase + TicksToSecs(timeStarlet);
 }
+
+//Re-define abort
+void abort() {
+	Shutdown();
+}

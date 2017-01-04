@@ -13,13 +13,14 @@ else
 	ZIP = zip
 endif
 
-COMMONFLAGS := -mbig-endian -O3 -g -I. -Wall \
-	   -mcpu=arm926ej-s -msoft-float -mfloat-abi=soft \
-	   -fdata-sections -ffunction-sections -fno-builtin-toupper -fno-builtin-memcpy \
-	   -fno-builtin-memset -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free
+COMMONFLAGS := -mbig-endian -O3 -I. -Wall \
+		-mcpu=arm926ej-s -msoft-float -mfloat-abi=soft \
+		-fdata-sections -ffunction-sections -fno-builtin-toupper -fno-builtin-memcpy \
+		-fno-builtin-memset -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free
 CFLAGS	 := -std=gnu89
 CPPFLAGS := -I. -I../fatfs
-CXXFLAGS := -std=c++11
+CXXFLAGS := -std=c++11 -Wno-unknown-pragmas -Wno-pragmas -Wno-missing-declarations -Wno-shadow \
+		-Wno-unused-variable -Wno-strict-aliasing
 
 ASFLAGS	:= -mbig-endian -mcpu=arm926ej-s
 LDFLAGS	:= -nostartfiles -nodefaultlibs -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n

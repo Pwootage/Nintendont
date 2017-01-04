@@ -2,6 +2,10 @@
 #ifndef __SYSCALLS_H__
 #define __SYSCALLS_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 u32 thread_create( u32 (*proc)(void* arg), void* arg, u32* stack, u32 stacksize, u8 priority, bool detach );
 
 #define thread_cancel(a,b) syscall_02(a,b)
@@ -107,5 +111,9 @@ s32 syscall_5a( char *Path );
 
 
 s32 sha1( void *SHACarry, void* data, u32 len, u32 SHAMode, void *hash);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

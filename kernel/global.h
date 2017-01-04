@@ -58,9 +58,15 @@ enum AHBDEV {
 #define	SHARED_PTR	((void *)0x13600000)
 #define	SHARED_SIZE	(0x18000)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void fatal(const char *format, ...);
 
 void udelay(int us);
+#ifdef __cplusplus
+};
+#endif
 
 typedef unsigned char u8;
 typedef unsigned char uint8_t;
@@ -100,6 +106,7 @@ typedef s32(*ipccallback)(s32 result,void *usrdata);
 #ifndef __cplusplus
 #include "ipc.h"
 #endif
+
 #include "syscalls.h"
 
 #ifndef __cplusplus
