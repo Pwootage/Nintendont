@@ -6,7 +6,6 @@
 #include "Config.h"
 
 using namespace std;
-using namespace nlohmann;
 
 //Defines taken from libogc's network.h and network_wii.c
 
@@ -147,12 +146,8 @@ void NetInit() {
 }
 
 u32 NetThread(void *arg) {
-  while (!netStart)
+  while (!netStart) {
     mdelay(100);
-
-  if (!ConfigGetConfig(NIN_CFG_PRIME_DUMP)) {
-    netStart = 0;
-    return 0;
   }
 
   const char *soDev = "/dev/net/ip/top";
@@ -220,8 +215,7 @@ u32 NetThread(void *arg) {
     sParams->has_destaddr = 0;
 
     while (1) {
-      json json = primeMemoryDump();
-      string dump = json.dump();
+      string dump = primeMemoryDump();
       char *buff = reinterpret_cast<char *>(heap_alloc_aligned(0, dump.size(), 32));
       memcpy(buff, dump.c_str(), dump.size());
 

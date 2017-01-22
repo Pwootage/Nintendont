@@ -1,5 +1,15 @@
 # Nintendont kernel
 
+#---------------------------------------------------------------------------------
+# Clear the implicit built in rules
+#---------------------------------------------------------------------------------
+
+.SUFFIXES:
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(DEVKITARM)),)
+$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+endif
+
 PREFIX	:= $(DEVKITARM)/bin/arm-none-eabi-
 CC	:= $(PREFIX)gcc
 CXX	:= $(PREFIX)g++
@@ -19,12 +29,12 @@ COMMONFLAGS := -mbig-endian -O3 -I. -Wall \
 		-fno-builtin-memset -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free \
 		-fno-exceptions -DJSON_NOEXCEPTION=true
 CFLAGS	 := -std=gnu89
-CPPFLAGS := -I. -I../fatfs -IPrimeMemoryDumping/ -IPrimeMemoryDumping/common/
+CPPFLAGS := -I. -I../fatfs -I./PrimeMemoryDumping -I./PrimeMemoryDumping/common -I../codehandler
 CXXFLAGS := -std=c++14 -Wno-unknown-pragmas -Wno-pragmas -Wno-missing-declarations -Wno-shadow \
 		-Wno-unused-variable -Wno-strict-aliasing
 
 ASFLAGS	:= -mbig-endian -mcpu=arm926ej-s
-LDFLAGS	:= -nostartfiles -nodefaultlibs -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n \
+LDFLAGS	:= -static -nostartfiles -nodefaultlibs -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n \
             -fno-exceptions
 
 TARGET	:= kernel.elf
@@ -32,9 +42,9 @@ OBJECTS	:= start.o common.o alloc.o GCAM.o JVSIO.o JVSIOMessage.o FST.o DI.o Rea
 	   Patch.o PatchTimers.o TRI.o PatchWidescreen.o ISO.o Stream.o adp.o \
 	   EXI.o SRAM.o SI.o HID.o diskio.o Config.o utils_asm.o ES.o NAND.o \
 	   main.o syscalls.o ReadSpeed.o vsprintf.o string.o prs.o \
-	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o new.o PrimeMemoryDumping/prime1/Prime1JsonDumper.o
+	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o new.o
 
-LIBS	:= ../fatfs/libfatfs-arm.a be/libc.a be/libgcc.a be/libstdc++.a
+LIBS	:= ../fatfs/libfatfs-arm.a be/libgcc.a be/libc.a be/libstdc++.a
 ZIPFILE	:= ../loader/data/kernel.zip
 
 # Bluetooth stack
@@ -70,4 +80,4 @@ $(TARGET): kernel.ld $(OBJECTS)
 	@$(CXX) $(COMMONFLAGS) $(CXXFLAGS) $(CPPFLAGS) -c -MMD -MP -MF $(@:.o=.d) -o $@ $<
 
 clean:
-	-rm -f $(ZIPFILE) *.elf *.o *.bin *.d *.map lwbt/*.d lwbt/*.o option/*.d option/*.o PrimeMemoryDumping/prime1/*.o
+	-$(RM) -f $(ZIPFILE) *.elf *.o *.bin *.d *.map lwbt/*.d lwbt/*.o option/*.d option/*.o PrimeMemoryDumping/prime1/*.o

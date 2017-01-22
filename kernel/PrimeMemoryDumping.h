@@ -6,18 +6,19 @@
 #define NINTENDONT_PRIMEMEMORYDUMPING_H
 
 #include <memory>
+#include <string>
 #include "string.h"
 #include "global.h"
 #include "common.h"
 #include "alloc.h"
-#include "PrimeMemoryDumping/prime1/Prime1JsonDumper.hpp"
+//#include "PrimeMemoryDumping/prime1/Prime1JsonDumper.hpp"
 
 #define PACKET_TYPE_GAME_DATA (0x1)
 #define PACKET_TYPE_RAW_DISC_READ (0x2)
 #define PACKET_TYPE_INVALID (0xFF)
 #define INVENTORY_SIZE (0x29)
 
-nlohmann::json primeMemoryDump();
+std::string primeMemoryDump();
 float readFloatFromGCMemory(u32 addr);
 u64 read64FromGCMemory(u32 addr);
 u32 read32FromGCMemory(u32 addr);

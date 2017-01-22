@@ -42,19 +42,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "dip.h"
 #include "unzip/unzip.h"
 
+// Background image.
+#include "background_png.h"
+
 GRRLIB_ttfFont *myFont;
 GRRLIB_texImg *background;
 GRRLIB_texImg *screen_buffer;
+static bool bg_isWidescreen = false;
+static float bg_xScale = 1.0f;
+static int bg_xPos = 0;
 
 u32 POffset;
 
 NIN_CFG* ncfg = (NIN_CFG*)0x93002900;
 bool UseSD;
 
-inline bool IsWiiU( void )
-{
-	return ( (*(vu32*)(0xCd8005A0) >> 16 ) == 0xCAFE );
-}
 const char* const GetRootDevice()
 {
 	static const char* const SdStr = "sd";
@@ -149,11 +151,11 @@ void RAMInit(void)
 	*(vu32*)0x8000315C = 0x81;
 }
 
-void unzip_data(const void *input, const u32 input_size, 
-	void **output, u32 *output_size)
+void unzip_data(const void *input, const unsigned int input_size, 
+	void **output, unsigned int *output_size)
 {
 	char filepath[20]; //statically linked zip file
-	snprintf(filepath,20,"%x+%x",(u32)input,input_size);
+	snprintf(filepath,20,"%x+%x",(unsigned int)input,input_size);
 	unzFile uf = unzOpen(filepath); //opens zip in memory
 	unzOpenCurrentFile(uf); //current file is the only file
 	unz_file_info file_info; //get file info for uncompressed size
@@ -166,9 +168,14 @@ void unzip_data(const void *input, const u32 input_size,
 }
 
 static void *font_ttf = NULL;
-static u32 font_ttf_size = 0;
+static unsigned int font_ttf_size = 0;
 
-void Initialise()
+/**
+ * Initialize the loader.
+ * This also loads the background image.
+ * @param autoboot Set if autobooting. (This disables the fade-in.)
+ */
+void Initialise(bool autoboot)
 {
 	int i;
 	AUDIO_Init(NULL);
@@ -182,12 +189,37 @@ void Initialise()
 	myFont = GRRLIB_LoadTTF(font_ttf, font_ttf_size);
 	background = GRRLIB_LoadTexturePNG(background_png);
 	screen_buffer = GRRLIB_CreateEmptyTexture(rmode->fbWidth, rmode->efbHeight);
-	for (i=0; i<255; i +=5) // Fade background image in from black screen
+
+	// Calculate the background image scale.
+	bg_isWidescreen = (CONF_GetAspectRatio() == CONF_ASPECT_16_9);
+	if (bg_isWidescreen)
 	{
-		GRRLIB_DrawImg(0, 0, background, 0, 1, 1, RGBA(255, 255, 255, i)); // Opacity increases as i does
-		GRRLIB_Render();
+		// Widescreen. 0.75x scaling, 80px offset.
+		bg_xScale = 0.75f;
+		bg_xPos = 80;
 	}
-	ClearScreen();
+	else
+	{
+		// Standard screen. 1.0x scaling, 0px offset.
+		bg_xScale = 1.0f;
+		bg_xPos = 0;
+	}
+
+	if(autoboot == false)
+	{
+		for (i=0; i<255; i +=5) // Fade background image in from black screen
+		{
+			if (bg_isWidescreen)
+			{
+				// Clear the sides.
+				GRRLIB_Rectangle(0, 0, 80, 480, RGBA(222, 223, 224, i), true);
+				GRRLIB_Rectangle(80+480, 0, 80, 480, RGBA(222, 223, 224, i), true);
+			}
+			GRRLIB_DrawImg(bg_xPos, 0, background, 0, bg_xScale, 1, RGBA(255, 255, 255, i)); // Opacity increases as i does
+			GRRLIB_Render();
+		}
+		ClearScreen();
+	}
 	gprintf("Initialize Finished\r\n");
 }
 
@@ -314,7 +346,13 @@ bool LoadNinCFG(void)
 
 inline void ClearScreen()
 {
-	GRRLIB_DrawImg(0, 0, background, 0, 1, 1, 0xFFFFFFFF);
+	if (bg_isWidescreen)
+	{
+		// Clear the sides.
+		GRRLIB_Rectangle(0, 0, 80, 480, RGBA(222, 223, 224, 255), true);
+		GRRLIB_Rectangle(80+480, 0, 80, 480, RGBA(222, 223, 224, 255), true);
+	}
+	GRRLIB_DrawImg(bg_xPos, 0, background, 0, bg_xScale, 1, RGBA(255, 255, 255, 255));
 }
 
 static inline char ascii(char s)
@@ -385,9 +423,21 @@ void UpdateNinCFG()
 		ncfg->VideoMode &= ~NIN_VID_PATCH_PAL50;
 		ncfg->Version = 6;
 	}
+	if (ncfg->Version == 6)
+	{	//New flag, disabled by default
+		ncfg->Config &= ~NIN_CFG_ARCADE_MODE;
+		ncfg->Version = 7;
+	}
+	if (ncfg->Version == 7)
+	{	// Wiimote CC Rumble, disabled by default;
+		// don't skip IPL by default.
+		ncfg->Config &= ~NIN_CFG_CC_RUMBLE;
+		ncfg->Config &= ~NIN_CFG_SKIP_IPL;
+		ncfg->Version = 8;
+	}
 }
 
-int CreateNewFile(const char *Path, u32 size)
+int CreateNewFile(const char *Path, unsigned int size)
 {
 	FIL f;
 
@@ -398,24 +448,30 @@ int CreateNewFile(const char *Path, u32 size)
 		return -1;
 	}
 
-	if (f_open_char(&f, Path, FA_WRITE|FA_CREATE_NEW) != FR_OK)
-	{
-		gprintf("Failed to create %s!\r\n", Path);
-		return -2;
-	}
-
 	// Allocate a temporary buffer.
 	void *buf = calloc(size, 1);
 	if(buf == NULL)
 	{
 		gprintf("Failed to allocate %u bytes!\r\n", size);
+		return -2;
+	}
+
+	// Create the file.
+	if (f_open_char(&f, Path, FA_WRITE|FA_CREATE_NEW) != FR_OK)
+	{
+		gprintf("Failed to create %s!\r\n", Path);
+		free(buf);
 		return -3;
 	}
+
+	// Reserve space in the file.
+	f_expand(&f, size, 1);
 
 	// Write the temporary buffer to disk.
 	UINT wrote;
 	f_write(&f, buf, size, &wrote);
 	f_close(&f);
+	FlushDevices();
 	free(buf);
 	gprintf("Created %s with %u bytes!\r\n", Path, wrote);
 	return 0;
@@ -523,11 +579,79 @@ int UnmountDevice(BYTE pdrv)
  */
 void CloseDevices(void)
 {
-	int i;
-
 	closeLog();
-	for (i = DEV_SD; i <= DEV_USB; i++)
+	UnmountDevice(DEV_SD);
+	UnmountDevice(DEV_USB);
+}
+
+/**
+ * Flush all device caches.
+ */
+void FlushDevices(void)
+{
+	disk_flush(DEV_SD);
+	disk_flush(DEV_USB);
+}
+
+/**
+ * Does a filename have a supported file extension?
+ * @return True if it does; false if it doesn't.
+ */
+bool IsSupportedFileExt(const char *filename)
+{
+	size_t len = strlen(filename);
+	if (len >= 5 && filename[len-4] == '.')
 	{
-		UnmountDevice(i);
+		const int extpos = len-3;
+		if (!strcasecmp(&filename[extpos], "gcm") ||
+		    !strcasecmp(&filename[extpos], "iso") ||
+		    !strcasecmp(&filename[extpos], "cso"))
+		{
+			// File extension is supported.
+			return true;
+		}
 	}
+	else if (len >= 6 && filename[len-5] == '.')
+	{
+		const int extpos = len-4;
+		if (!strcasecmp(&filename[extpos], "ciso"))
+		{
+			// File extension is supported.
+			return true;
+		}
+	}
+
+	// File extension is NOT supported.
+	return false;
+}
+
+/**
+ * Check if an ID6 is a known multi-game disc.
+ * @param id6 ID6. (must be 6 bytes)
+ * @return True if this is a known multi-game disc; false if not.
+ */
+bool IsMultiGameDisc(const char *id6)
+{
+	// Reference: https://gbatemp.net/threads/wit-wiimms-iso-tools-gamecube-disc-support.251630/#post-3088119
+	// NOTE: GCOx52 is "Call of Duty: Finest Hour".
+	if (!memcmp(id6, "GCO", 3) && id6[4]=='D' && id6[5]=='V')
+	{
+		// GCOxDV(D5) or GCOxDV(D9).
+		return true;
+	}
+
+	// Check for older IDs.
+	static const char multi_game_ids[3][8] = {"COBRAM", "GGCOSD", "RGCOSD"};
+	u32 i;
+	for (i = 0; i < 3; i++)
+	{
+		if (!memcmp(id6, multi_game_ids[i], 6))
+		{
+			// Found a multi-game disc.
+			return true;
+		}
+	}
+
+	// Not a multi-game disc.
+	return false;
 }

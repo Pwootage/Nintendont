@@ -5,7 +5,7 @@
 #include "NintendontVersion.h"
 #include "Metadata.h"
 
-#define NIN_CFG_VERSION		0x00000006
+#define NIN_CFG_VERSION		0x00000008
 
 #define NIN_CFG_MAXPAD 4
 
@@ -36,18 +36,20 @@ enum ninconfigbitpos
 	NIN_CFG_BIT_FORCE_WIDE	= (5),
 	NIN_CFG_BIT_FORCE_PROG	= (6),
 	NIN_CFG_BIT_AUTO_BOOT	= (7),
-	NIN_CFG_BIT_HID			= (8),	// Old Versions
+	NIN_CFG_BIT_HID		= (8),	// Old Versions
 	NIN_CFG_BIT_REMLIMIT	= (8),	// New Versions
 	NIN_CFG_BIT_OSREPORT	= (9),
-	NIN_CFG_BIT_USB			= (10),
-	NIN_CFG_BIT_LED			= (11),
-	NIN_CFG_BIT_LOG			= (12),
-	NIN_CFG_BIT_LAST		= (13),
+	NIN_CFG_BIT_USB		= (10),
+	NIN_CFG_BIT_LED		= (11),
+	NIN_CFG_BIT_LOG		= (12),
+	NIN_CFG_BIT_LAST	= (13),
 
 	NIN_CFG_BIT_MC_MULTI	= (13),
 	NIN_CFG_BIT_NATIVE_SI	= (14),
 	NIN_CFG_BIT_WIIU_WIDE	= (15),
-	NIN_CFG_BIT_PRIME_DUMP = (30), //Offset to hopefully not run into official config later on (since it uses the same config file)
+	NIN_CFG_BIT_ARCADE_MODE = (16),
+	NIN_CFG_BIT_CC_RUMBLE	= (17),
+	NIN_CFG_BIT_SKIP_IPL	= (18),
 };
 
 enum ninconfig
@@ -60,16 +62,18 @@ enum ninconfig
 	NIN_CFG_FORCE_WIDE	= (1<<NIN_CFG_BIT_FORCE_WIDE),
 	NIN_CFG_FORCE_PROG	= (1<<NIN_CFG_BIT_FORCE_PROG),
 	NIN_CFG_AUTO_BOOT	= (1<<NIN_CFG_BIT_AUTO_BOOT),
-	NIN_CFG_HID			= (1<<NIN_CFG_BIT_HID),
+	NIN_CFG_HID		= (1<<NIN_CFG_BIT_HID),
 	NIN_CFG_REMLIMIT	= (1<<NIN_CFG_BIT_REMLIMIT),
 	NIN_CFG_OSREPORT	= (1<<NIN_CFG_BIT_OSREPORT),
-	NIN_CFG_USB			= (1<<NIN_CFG_BIT_USB),
-	NIN_CFG_LED			= (1<<NIN_CFG_BIT_LED),
-	NIN_CFG_LOG			= (1<<NIN_CFG_BIT_LOG),
+	NIN_CFG_USB		= (1<<NIN_CFG_BIT_USB),
+	NIN_CFG_LED		= (1<<NIN_CFG_BIT_LED),
+	NIN_CFG_LOG		= (1<<NIN_CFG_BIT_LOG),
 	NIN_CFG_MC_MULTI	= (1<<NIN_CFG_BIT_MC_MULTI),
 	NIN_CFG_NATIVE_SI	= (1<<NIN_CFG_BIT_NATIVE_SI),
 	NIN_CFG_WIIU_WIDE	= (1<<NIN_CFG_BIT_WIIU_WIDE),
-	NIN_CFG_PRIME_DUMP = (1<<NIN_CFG_BIT_PRIME_DUMP),
+	NIN_CFG_ARCADE_MODE	= (1<<NIN_CFG_BIT_ARCADE_MODE),
+	NIN_CFG_CC_RUMBLE	= (1<<NIN_CFG_BIT_CC_RUMBLE),
+	NIN_CFG_SKIP_IPL	= (1<<NIN_CFG_BIT_SKIP_IPL),
 };
 
 enum ninextrasettings
@@ -157,5 +161,14 @@ enum VideoModes
 #define MEM_CARD_CODE(x) (1<<(x+2))
 #define MEM_CARD_SIZE(x) (1<<(x+19))
 #define MEM_CARD_BLOCKS(x) ((1<<(x+6))-5)
+
+// bi2.bin region codes. (0x458)
+enum BI2region_codes
+{
+	BI2_REGION_JAPAN	= 0,
+	BI2_REGION_USA		= 1,
+	BI2_REGION_PAL		= 2,
+	BI2_REGION_SOUTH_KOREA	= 4,
+};
 
 #endif

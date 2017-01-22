@@ -4,12 +4,19 @@
 #include <stdarg.h>
 #include "string.h"
 
-#ifndef __cplusplus
-int vsprintf(char *buf, const char *fmt, va_list args);
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+int _vsprintf(char *buf, const char *fmt, va_list args);
+
 int _sprintf( char *buf, const char *fmt, ... );
 //int dbgprintf( const char *fmt, ...);
 void CheckOSReport(void);
 void closeLog(void);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

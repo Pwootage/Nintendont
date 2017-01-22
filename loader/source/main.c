@@ -19,19 +19,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
 #include <gccore.h>
+#include <sys/param.h>
 #include <ogc/lwp_watchdog.h>
 #include <ogc/lwp_threads.h>
 #include <wiiuse/wpad.h>
 #include <wupc/wupc.h>
 #include <di/di.h>
-
 #include <unistd.h>
+#include <locale.h>
 
 #include "exi.h"
 #include "dip.h"
 #include "global.h"
 #include "font.h"
-#include "Config.h"
 #include "FPad.h"
 #include "menu.h"
 #include "MemCard.h"
@@ -43,6 +43,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ipl.h"
 #include "HID.h"
 #include "TRI.h"
+#include "Config.h"
 
 #include "ff_utf8.h"
 #include "diskio.h"
@@ -58,11 +59,11 @@ extern u32 __SYS_UnlockSram(u32 write);
 extern u32 __SYS_SyncSram(void);
 
 #define STATUS			((void*)0x90004100)
-#define STATUS_LOADING	(*(vu32*)(0x90004100))
-#define STATUS_SECTOR	(*(vu32*)(0x90004100 + 8))
+#define STATUS_LOADING	(*(volatile unsigned int*)(0x90004100))
+#define STATUS_SECTOR	(*(volatile unsigned int*)(0x90004100 + 8))
 #define STATUS_DRIVE	(*(float*)(0x9000410C))
-#define STATUS_GB_MB	(*(vu32*)(0x90004100 + 16))
-#define STATUS_ERROR	(*(vu32*)(0x90004100 + 20))
+#define STATUS_GB_MB	(*(volatile unsigned int*)(0x90004100 + 16))
+#define STATUS_ERROR	(*(volatile unsigned int*)(0x90004100 + 20))
 
 #define HW_DIFLAGS		0xD800180
 #define MEM_PROT		0xD8B420A
@@ -76,14 +77,14 @@ static const unsigned char Boot2Patch[] =
     0x48, 0x03, 0x49, 0x04, 0x47, 0x78, 0x46, 0xC0, 0xE6, 0x00, 0x08, 0x70, 0xE1, 0x2F, 0xFF, 0x1E, 
     0x10, 0x10, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x25,
 };
-static const unsigned char AHBAccessPattern[] =
+/*static const unsigned char AHBAccessPattern[] =
 {
 	0x68, 0x5B, 0x22, 0xEC, 0x00, 0x52, 0x18, 0x9B, 0x68, 0x1B, 0x46, 0x98, 0x07, 0xDB,
 };
 static const unsigned char AHBAccessPatch[] =
 {
 	0x68, 0x5B, 0x22, 0xEC, 0x00, 0x52, 0x18, 0x9B, 0x23, 0x01, 0x46, 0x98, 0x07, 0xDB,
-};
+};*/
 static const unsigned char FSAccessPattern[] =
 {
     0x9B, 0x05, 0x40, 0x03, 0x99, 0x05, 0x42, 0x8B, 
@@ -188,9 +189,16 @@ static void updateMetaXml(void)
 	// Write the new meta.xml.
 	if (f_open_char(&meta, filepath, FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
 	{
+		// Reserve space in the file.
+		if (f_size(&meta) < len) {
+			f_expand(&meta, len, 1);
+		}
+
+		// Write the new meta.xml.
 		UINT wrote;
 		f_write(&meta, new_meta, len, &wrote);
 		f_close(&meta);
+		FlushDevices();
 	}
 }
 
@@ -200,6 +208,303 @@ void changeToDefaultDrive()
 	f_chdrive(primaryDevice);
 	f_chdir_char("/");
 }
+
+/**
+ * Get multi-game and region code information.
+ * @param CurDICMD	[in] DI command. (0 == disc image, DIP_CMD_NORMAL == GameCube disc, DIP_CMD_DVDR == DVD-R)
+ * @param ISOShift	[out,opt] ISO Shift. (34-bit rshifted byte offset)
+ * @param BI2region	[out,opt] bi2.bin region code.
+ * @return 0 on success; non-zero on error.
+ */
+static u32 CheckForMultiGameAndRegion(u32 CurDICMD, u32 *ISOShift, u32 *BI2region)
+{
+	char GamePath[260];
+
+	// Re-read the disc header to get the full ID6.
+	u8 *MultiHdr = memalign(32, 0x800);
+
+	FIL f;
+	UINT read;
+	FRESULT fres = FR_DISK_ERR;
+
+	if(CurDICMD)
+	{
+		ReadRealDisc(MultiHdr, 0, 0x800, CurDICMD);
+	}
+	else if (IsSupportedFileExt(ncfg->GamePath))
+	{
+		snprintf(GamePath, sizeof(GamePath), "%s:%s", GetRootDevice(), ncfg->GamePath);
+		fres = f_open_char(&f, GamePath, FA_READ|FA_OPEN_EXISTING);
+		if (fres != FR_OK)
+		{
+			// Error opening the file.
+			free(MultiHdr);
+			return -1;
+		}
+
+		f_read(&f, MultiHdr, 0x800, &read);
+		if (read != 0x800)
+		{
+			// Error reading from the file.
+			f_close(&f);
+			free(MultiHdr);
+			return -2;
+		}
+
+		// Check for CISO magic with 2 MB block size.
+		// NOTE: CISO block size is little-endian.
+		static const uint8_t CISO_MAGIC[8] = {'C','I','S','O',0x00,0x00,0x20,0x00};
+		if (!memcmp(MultiHdr, CISO_MAGIC, sizeof(CISO_MAGIC)) && !IsGCGame(MultiHdr))
+		{
+			// CISO magic is present, and GCN magic isn't.
+			// This is most likely a CISO image.
+
+			// CISO+MultiGame is not supported, so read the
+			// BI2.bin region code if requested and then return.
+			int ret = 0;
+			if (ISOShift)
+				*ISOShift = 0;
+			if (BI2region)
+			{
+				f_lseek(&f, 0x8458);
+				f_read(&f, BI2region, sizeof(*BI2region), &read);
+				if (read != sizeof(*BI2region))
+				{
+					// Error reading from the file.
+					ret = -3;
+				}
+			}
+
+			f_close(&f);
+			free(MultiHdr);
+			return ret;
+		}
+	}
+	else
+	{
+		// Extracted FST format.
+		// Multi-game isn't supported.
+		if (ISOShift)
+			*ISOShift = 0;
+		if (!BI2region)
+		{
+			free(MultiHdr);
+			return 0;
+		}
+
+		// Get the bi2.bin region code.
+		snprintf(GamePath, sizeof(GamePath), "%s:%ssys/bi2.bin", GetRootDevice(), ncfg->GamePath);
+		fres = f_open_char(&f, GamePath, FA_READ|FA_OPEN_EXISTING);
+		if (fres != FR_OK)
+		{
+			// Error opening bi2.bin.
+			free(MultiHdr);
+			return -4;
+		}
+
+		// bi2.bin is normally 8 KB, but we only need
+		// the first 48 bytes.
+		f_read(&f, MultiHdr, 48, &read);
+		f_close(&f);
+		if (read != 48)
+		{
+			// Could not read bi2.bin.
+			free(MultiHdr);
+			return -5;
+		}
+
+		// BI2.bin is at 0x440.
+		// Region code is at 0x458. (0x18 within BI2.bin.)
+		*BI2region = *(u32*)(&MultiHdr[0x18]);
+		free(MultiHdr);
+		return 0;
+	}
+
+	if (!IsMultiGameDisc((const char*)MultiHdr))
+	{
+		// Not a multi-game disc.
+		if (!CurDICMD)
+		{
+			// Close the disc image file.
+			f_close(&f);
+		}
+
+		if (BI2region)
+		{
+			// BI2.bin is at 0x440.
+			// Region code is at 0x458.
+			*BI2region = *(u32*)(&MultiHdr[0x458]);
+		}
+
+		free(MultiHdr);
+		return 0;
+	}
+
+	// Up to 15 games are supported.
+	// In theory, the format supports up to 48 games, but
+	// you'll run into the DVD size limit way before you
+	// ever reach that limit.
+	u32 i = 0;
+	u32 gamecount = 0;
+	u32 Offsets[15]; // 34-bit, rshifted by 2
+	u32 BI2region_codes[15];
+	gameinfo gi[15];
+
+	// Games must be aligned to 4-byte boundaries, since
+	// we're using 34-bit rsh2 (Wii) offsets.
+	u8 gameIsUnaligned[15];
+
+	u8 *GameHdr = memalign(32, 0x800);
+	// GCOPDV(D9) uses Wii-style 34-bit shifted addresses.
+	// FIXME: Needs 64-bit offsets.
+	const u32 *hdr32 = (const u32*)MultiHdr;
+	bool IsShifted = (hdr32[1] == 0x44564439);
+	for (i = 0x10; i < 0x40 && gamecount < 15; i++)
+	{
+		const u32 TmpOffset = hdr32[i];
+		if (TmpOffset > 0)
+		{
+			u64 RealOffset;
+			if (IsShifted)
+			{
+				// Disc uses 34-bit shifted offsets.
+				Offsets[gamecount] = TmpOffset;
+				RealOffset = (u64)TmpOffset << 2;
+			}
+			else
+			{
+				// Disc uses 32-bit unshifted offsets.
+				// If the value isn't a multiple of 4, it's unusable.
+				// TODO: Fix this, or will this "never" happen?
+				gameIsUnaligned[gamecount] = !!(TmpOffset & 3);
+				Offsets[gamecount] = TmpOffset >> 2;
+				RealOffset = TmpOffset;
+			}
+
+			if(CurDICMD)
+			{
+				ReadRealDisc(GameHdr, RealOffset, 0x800, CurDICMD);
+			}
+			else
+			{
+				f_lseek(&f, RealOffset);
+				f_read(&f, GameHdr, 0x800, &read);
+			}
+
+			// Make sure the title in the header is NULL terminated.
+			GameHdr[0x20+65] = 0;
+
+			// BI2.bin is at 0x440.
+			// Region code is at 0x458.
+			BI2region_codes[gamecount] = *(u32*)(&GameHdr[0x458]);
+
+			// TODO: titles.txt support?
+			memcpy(gi[gamecount].ID, GameHdr, 6);
+			gi[gamecount].Revision = GameHdr[0x07];
+			gi[gamecount].Flags = GIFLAG_NAME_ALLOC;
+			gi[gamecount].Name = strdup((char*)&GameHdr[0x20]);
+			gi[gamecount].Path = NULL;
+			gamecount++;
+		}
+	}
+
+	free(GameHdr);
+	free(MultiHdr);
+	if (!CurDICMD)
+	{
+		f_close(&f);
+	}
+
+	// TODO: Share code with menu.c.
+	bool redraw = true;
+	ClearScreen();
+	u32 PosX = 0;
+	u32 UpHeld = 0, DownHeld = 0;
+	while (true)
+	{
+		VIDEO_WaitVSync();
+		FPAD_Update();
+		if( FPAD_OK(0) )
+		{
+			// TODO: Fix support for unaligned games?
+			if (!gameIsUnaligned[PosX])
+				break;
+		}
+
+		if( FPAD_Down(1) )
+		{
+			if(DownHeld == 0 || DownHeld > 10)
+			{
+				PosX++;
+				if(PosX == gamecount) PosX = 0;
+				redraw = true;
+			}
+			DownHeld++;
+		}
+		else
+		{
+			DownHeld = 0;
+		}
+
+		if( FPAD_Up(1) )
+		{
+			if(UpHeld == 0 || UpHeld > 10)
+			{
+				if(PosX == 0) PosX = gamecount;
+				PosX--;
+				redraw = true;
+			}
+			UpHeld++;
+		}
+		else
+		{
+			UpHeld = 0;
+		}
+
+		// TODO: Home = Go Back?
+
+		if( redraw )
+		{
+			PrintInfo();
+			PrintButtonActions(NULL, "Select", NULL, NULL);
+			static const int subheader_x = (640 - (40*10)) / 2;
+			PrintFormat(DEFAULT_SIZE, BLACK, subheader_x, MENU_POS_Y + 20*3,
+				    "Select a game from this multi-game disc:");
+			for (i = 0; i < gamecount; ++i)
+			{
+				const u32 color = gameIsUnaligned[i] ? MAROON : BLACK;
+				PrintFormat(DEFAULT_SIZE, color, MENU_POS_X, MENU_POS_Y + 20*4 + i * 20, "%50.50s [%.6s]%s",
+					    gi[i].Name, gi[i].ID, i == PosX ? ARROW_LEFT : " " );
+			}
+			GRRLIB_Render();
+			Screenshot();
+			ClearScreen();
+			redraw = false;
+		}
+	}
+
+	// Free the allocated names.
+	for (i = 0; i < gamecount; ++i)
+	{
+		if (gi[i].Flags & GIFLAG_NAME_ALLOC)
+			free(gi[i].Name);
+	}
+
+	// Set the ISOShift and BI2region values.
+	if (ISOShift)
+	{
+		*ISOShift = Offsets[PosX];
+	}
+	if (BI2region)
+	{
+		*BI2region = BI2region_codes[PosX];
+	}
+
+	// Save the Game ID.
+	memcpy(&ncfg->GameID, gi[PosX].ID, 4);
+	return 0;
+}
+
 static s32 kdData[8] ALIGNED(32);
 int main(int argc, char **argv)
 {
@@ -211,14 +516,33 @@ int main(int argc, char **argv)
 	memcpy(loader_stub, (void*)0x80001800, 0x1800);
 
 	RAMInit();
+	//tell devkitPPC r29 that we use UTF-8
+	setlocale(LC_ALL,"C.UTF-8");
+
+	memset((void*)ncfg, 0, sizeof(NIN_CFG));
+	bool argsboot = false;
+	if(argc > 1) //every 0x00 gets counted as one arg so just make sure its more than the path and copy
+	{
+		memcpy(ncfg, argv[1], sizeof(NIN_CFG));
+		UpdateNinCFG(); //support for old versions with this
+		if(ncfg->Magicbytes == 0x01070CF6 && ncfg->Version == NIN_CFG_VERSION && ncfg->MaxPads <= NIN_CFG_MAXPAD)
+		{
+			if(ncfg->Config & NIN_CFG_AUTO_BOOT)
+			{	//do NOT remove, this can be used to see if nintendont knows args
+				gprintf(ARGSBOOT_STR);
+				argsboot = true;
+			}
+		}
+	}
 
 	//Meh, doesnt do anything anymore anyways
 	//STM_RegisterEventHandler(HandleSTMEvent);
 
-	Initialise();
+	Initialise(argsboot);
 
 	// Initializing IOS58...
-	ShowMessageScreen("Initializing IOS58...");
+	if(argsboot == false)
+		ShowMessageScreen("Initializing IOS58...");
 
 	u32 u;
 	//Disables MEMPROT for patches
@@ -260,7 +584,7 @@ int main(int argc, char **argv)
 	}
 
 	void *kernel_bin = NULL;
-	u32 kernel_bin_size = 0;
+	unsigned int kernel_bin_size = 0;
 	unzip_data(kernel_zip, kernel_zip_size, &kernel_bin, &kernel_bin_size);
 	gprintf("Decompressed kernel.bin with %i bytes\r\n", kernel_bin_size);
 	InsertModule((char*)kernel_bin, kernel_bin_size);
@@ -301,8 +625,12 @@ int main(int argc, char **argv)
 		}
 	}
 
+	gprintf("Nintendont at your service!\r\n%s\r\n", NIN_BUILD_STRING);
+	KernelLoaded = 1;
+
 	// Checking for storage devices...
-	ShowMessageScreen("Checking storage devices...");
+	if(argsboot == false)
+		ShowMessageScreen("Checking storage devices...");
 
 	// Initialize devices.
 	// TODO: Only mount the device Nintendont was launched from
@@ -331,9 +659,6 @@ int main(int argc, char **argv)
 		ExitToLoader(1);
 	}
 
-	gprintf("Nintendont at your service!\r\n%s\r\n", NIN_BUILD_STRING);
-	KernelLoaded = 1;
-
 	char* first_slash = strrchr(argv[0], '/');
 	if (first_slash != NULL) strncpy(launch_dir, argv[0], first_slash-argv[0]+1);
 	gprintf("launch_dir = %s\r\n", launch_dir);
@@ -355,26 +680,11 @@ int main(int argc, char **argv)
 	// Update meta.xml.
 	updateMetaXml();
 
-	// Load titles.txt.
-	LoadTitles();
-
-	memset((void*)ncfg, 0, sizeof(NIN_CFG));
-	bool argsboot = false;
-	if(argc > 1) //every 0x00 gets counted as one arg so just make sure its more than the path and copy
-	{
-		memcpy(ncfg, argv[1], sizeof(NIN_CFG));
-		UpdateNinCFG(); //support for old versions with this
-		if(ncfg->Magicbytes == 0x01070CF6 && ncfg->Version == NIN_CFG_VERSION && ncfg->MaxPads <= NIN_CFG_MAXPAD)
-		{
-			if(ncfg->Config & NIN_CFG_AUTO_BOOT)
-			{	//do NOT remove, this can be used to see if nintendont knows args
-				gprintf(ARGSBOOT_STR);
-				argsboot = true;
-			}
-		}
-	}
 	if(argsboot == false)
 	{
+		// Load titles.txt.
+		LoadTitles();
+
 		if (LoadNinCFG() == false)
 		{
 			memset(ncfg, 0, sizeof(NIN_CFG));
@@ -436,7 +746,8 @@ int main(int argc, char **argv)
 	u32 CurDICMD = 0;
 	if( memcmp(ncfg->GamePath, "di", 3) == 0 )
 	{
-		ShowLoadingScreen();
+		if(argsboot == false)
+			ShowLoadingScreen();
 
 		DI_UseCache(false);
 		DI_Init();
@@ -479,6 +790,12 @@ int main(int argc, char **argv)
 		FIL cfg;
 		if (f_open_char(&cfg, "/nincfg.bin", FA_WRITE|FA_OPEN_ALWAYS) == FR_OK)
 		{
+			// Reserve space in the file.
+			if (f_size(&cfg) < sizeof(NIN_CFG)) {
+				f_expand(&cfg, sizeof(NIN_CFG), 1);
+			}
+
+			// Write nincfg.bin.
 			UINT wrote;
 			f_write(&cfg, ncfg, sizeof(NIN_CFG), &wrote);
 			f_close(&cfg);
@@ -489,129 +806,27 @@ int main(int argc, char **argv)
 		snprintf(ConfigPath, sizeof(ConfigPath), "%s:/nincfg.bin", GetRootDevice());
 		if (f_open_char(&cfg, ConfigPath, FA_WRITE|FA_OPEN_ALWAYS) == FR_OK)
 		{
+			// Reserve space in the file.
+			if (f_size(&cfg) < sizeof(NIN_CFG)) {
+				f_expand(&cfg, sizeof(NIN_CFG), 1);
+			}
+
+			// Write nincfg.bin.
 			UINT wrote;
 			f_write(&cfg, ncfg, sizeof(NIN_CFG), &wrote);
 			f_close(&cfg);
 		}
+
+		FlushDevices();
 	}
 
-	// Check for multi-game disc images.
-	u32 ISOShift = 0;
-	if(memcmp(&(ncfg->GameID), "COBR", 4) == 0 || memcmp(&(ncfg->GameID), "GGCO", 4) == 0
-		|| memcmp(&(ncfg->GameID), "GCO", 3) == 0 || memcmp(&(ncfg->GameID), "RGCO", 4) == 0)
+	// Get multi-game and region code information.
+	u32 ISOShift = 0;	// NOTE: This is a 34-bit shifted offset.
+	u32 BI2region = 0;	// bi2.bin region code [TODO: Validate?]
+	if (CheckForMultiGameAndRegion(CurDICMD, &ISOShift, &BI2region) != 0)
 	{
-		u32 i, j = 0;
-		u32 Offsets[15];
-		gameinfo gi[15];
-		u8 *MultiHdr = memalign(32, 0x800);
-
-		FIL f;
-		UINT read;
-		FRESULT fres = FR_DISK_ERR;
-
-		if(CurDICMD)
-		{
-			ReadRealDisc(MultiHdr, 0, 0x800, CurDICMD);
-		}
-		else if(strstr(ncfg->GamePath, ".iso") != NULL)
-		{
-			char GamePath[260];
-			snprintf(GamePath, sizeof(GamePath), "%s:%s", GetRootDevice(), ncfg->GamePath);
-			fres = f_open_char(&f, GamePath, FA_READ|FA_OPEN_EXISTING);
-			if (fres == FR_OK)
-				f_read(&f, MultiHdr, 0x800, &read);
-		}
-
-		//Damn you COD for sharing this ID!
-		if (fres != FR_OK || (memcmp(MultiHdr, "GCO", 3) == 0 && memcmp(MultiHdr+4, "52", 3) == 0))
-		{
-			free(MultiHdr);
-			if (fres == FR_OK)
-				f_close(&f);
-		}
-		else
-		{
-			u8 *GameHdr = memalign(32, 0x800);
-			u32 NeedShift = (*(vu32*)(MultiHdr+4) == 0x44564439);
-			for(i = 0x40; i < 0x100; i += 4)
-			{
-				u32 TmpOffset = *(vu32*)(MultiHdr+i);
-				if(TmpOffset > 0)
-				{
-					Offsets[j] = NeedShift ? TmpOffset << 2 : TmpOffset;
-					if(CurDICMD)
-					{
-						ReadRealDisc(GameHdr, Offsets[j], 0x800, CurDICMD);
-					}
-					else
-					{
-						f_lseek(&f, Offsets[j]);
-						f_read(&f, GameHdr, 0x800, &read);
-					}
-
-					// TODO: titles.txt support?
-					// FIXME: This memory is never freed!
-					memcpy(gi[j].ID, GameHdr, 6);
-					gi[j].Name = strdup((char*)GameHdr+0x20);
-					j++;
-					if(j == 15) break;
-				}
-			}
-			free(GameHdr);
-			free(MultiHdr);
-			f_close(&f);
-
-			bool redraw = 1;
-			ClearScreen();
-			u32 PosX = 0;
-			u32 UpHeld = 0, DownHeld = 0;
-			while(1)
-			{
-				VIDEO_WaitVSync();
-				FPAD_Update();
-				if( FPAD_OK(0) )
-					break;
-				else if( FPAD_Down(1) )
-				{
-					if(DownHeld == 0 || DownHeld > 10)
-					{
-						PosX++;
-						if(PosX == j) PosX = 0;
-						redraw = true;
-					}
-					DownHeld++;
-				}
-				else
-					DownHeld = 0;
-				if( FPAD_Up(1) )
-				{
-					if(UpHeld == 0 || UpHeld > 10)
-					{
-						if(PosX == 0) PosX = j;
-						PosX--;
-						redraw = true;
-					}
-					UpHeld++;
-				}
-				else
-					UpHeld = 0;
-				if( redraw )
-				{
-					PrintInfo();
-					for( i=0; i < j; ++i )
-						PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*4 + i * 20, "%50.50s [%.6s]%s", 
-							gi[i].Name, gi[i].ID, i == PosX ? ARROW_LEFT : " " );
-					GRRLIB_Render();
-					Screenshot();
-					ClearScreen();
-					redraw = false;
-				}
-			}
-			ISOShift = Offsets[PosX];
-			memcpy(&(ncfg->GameID), gi[PosX].ID, 4);
-		}
+		ShowMessageScreenAndExit("CheckForMultiGameAndRegion() failed.", 1);
 	}
-//multi-iso game hack
 	*(vu32*)0xD300300C = ISOShift;
 
 //Set Language
@@ -652,13 +867,24 @@ int main(int argc, char **argv)
 		memset(MemCardName, 0, 8);
 		if ( ncfg->Config & NIN_CFG_MC_MULTI )
 		{
-			// "Multi" mode enabled.
+			// "Multi" mode is enabled.
 			// Use one memory card for USA/PAL games,
 			// and another memory card for JPN games.
-			if ((ncfg->GameID & 0xFF) == 'J')  // JPN games
-				memcpy(MemCardName, "ninmemj", 7);
-			else
-				memcpy(MemCardName, "ninmem", 6);
+			switch (BI2region)
+			{
+				case BI2_REGION_JAPAN:
+				case BI2_REGION_SOUTH_KOREA:
+				default:
+					// JPN games.
+					memcpy(MemCardName, "ninmemj", 7);
+					break;
+
+				case BI2_REGION_USA:
+				case BI2_REGION_PAL:
+					// USA/PAL games.
+					memcpy(MemCardName, "ninmem", 6);
+					break;
+			}
 		}
 		else
 		{
@@ -673,7 +899,7 @@ int main(int argc, char **argv)
 		if (f_open_char(&f, MemCard, FA_READ|FA_OPEN_EXISTING) != FR_OK)
 		{
 			// Memory card file not found. Create it.
-			if(GenerateMemCard(MemCard) == false)
+			if(GenerateMemCard(MemCard, BI2region) == false)
 			{
 				ClearScreen();
 				ShowMessageScreenAndExit("Failed to create Memory Card File!", 1);
@@ -707,59 +933,64 @@ int main(int argc, char **argv)
 	if (ncfg->GameID != 0x47545050) //Damn you Knights Of The Temple!
 		IsTRIGame = TRISetupGames(ncfg->GamePath, CurDICMD, ISOShift);
 
-	if(IsTRIGame == 0)
+	if (!(ncfg->Config & (NIN_CFG_SKIP_IPL)))
 	{
-		// Attempt to load the GameCube IPL.
-		char iplchar[32];
-		iplchar[0] = 0;
-		switch (ncfg->GameID & 0xFF)
+		if(IsTRIGame == 0)
 		{
-			case 'E':	// USA region
-				snprintf(iplchar, sizeof(iplchar), "%s:/iplusa.bin", GetRootDevice());
-				break;
-			case 'J':	// JPN region
-				snprintf(iplchar, sizeof(iplchar), "%s:/ipljap.bin", GetRootDevice());
-				break;
-			case 'P':	// PAL region
-				// FIXME: PAL IPL is broken on Wii U.
-				if (!IsWiiU())
-					snprintf(iplchar, sizeof(iplchar), "%s:/iplpal.bin", GetRootDevice());
-				break;
-			default:
-				break;
-		}
+			// Attempt to load the GameCube IPL.
+			char iplchar[32];
+			iplchar[0] = 0;
+			switch (BI2region)
+			{
+				case BI2_REGION_USA:
+					snprintf(iplchar, sizeof(iplchar), "%s:/iplusa.bin", GetRootDevice());
+					break;
 
-		FIL f;
-		if (iplchar[0] != 0 &&
-		    f_open_char(&f, iplchar, FA_READ|FA_OPEN_EXISTING) == FR_OK)
-		{
-			if (f.obj.objsize == GCN_IPL_SIZE)
-			{
-				iplbuf = malloc(GCN_IPL_SIZE);
-				UINT read;
-				f_read(&f, iplbuf, GCN_IPL_SIZE, &read);
-				useipl = (read == GCN_IPL_SIZE);
+				case BI2_REGION_JAPAN:
+				case BI2_REGION_SOUTH_KOREA:
+				default:
+					snprintf(iplchar, sizeof(iplchar), "%s:/ipljap.bin", GetRootDevice());
+					break;
+
+				case BI2_REGION_PAL:
+					// FIXME: PAL IPL is broken on Wii U.
+					if (!IsWiiU())
+						snprintf(iplchar, sizeof(iplchar), "%s:/iplpal.bin", GetRootDevice());
+					break;
 			}
-			f_close(&f);
+
+			FIL f;
+			if (iplchar[0] != 0 &&
+			    f_open_char(&f, iplchar, FA_READ|FA_OPEN_EXISTING) == FR_OK)
+			{
+				if (f.obj.objsize == GCN_IPL_SIZE)
+				{
+					iplbuf = malloc(GCN_IPL_SIZE);
+					UINT read;
+					f_read(&f, iplbuf, GCN_IPL_SIZE, &read);
+					useipl = (read == GCN_IPL_SIZE);
+				}
+				f_close(&f);
+			}
 		}
-	}
-	else
-	{
-		// Attempt to load the Triforce IPL. (segaboot)
-		char iplchar[32];
-		snprintf(iplchar, sizeof(iplchar), "%s:/segaboot.bin", GetRootDevice());
-		FIL f;
-		if (f_open_char(&f, iplchar, FA_READ|FA_OPEN_EXISTING) == FR_OK)
+		else
 		{
-			if (f.obj.objsize == TRI_IPL_SIZE)
+			// Attempt to load the Triforce IPL. (segaboot)
+			char iplchar[32];
+			snprintf(iplchar, sizeof(iplchar), "%s:/segaboot.bin", GetRootDevice());
+			FIL f;
+			if (f_open_char(&f, iplchar, FA_READ|FA_OPEN_EXISTING) == FR_OK)
 			{
-				f_lseek(&f, 0x20);
-				void *iplbuf = (void*)0x92A80000;
-				UINT read;
-				f_read(&f, iplbuf, TRI_IPL_SIZE - 0x20, &read);
-				useipltri = (read == (TRI_IPL_SIZE - 0x20));
+				if (f.obj.objsize == TRI_IPL_SIZE)
+				{
+					f_lseek(&f, 0x20);
+					void *iplbuf = (void*)0x92A80000;
+					UINT read;
+					f_read(&f, iplbuf, TRI_IPL_SIZE - 0x20, &read);
+					useipltri = (read == (TRI_IPL_SIZE - 0x20));
+				}
+				f_close(&f);
 			}
-			f_close(&f);
 		}
 	}
 
@@ -803,133 +1034,139 @@ int main(int argc, char **argv)
 		if( STATUS_LOADING == 0xdeadbeef )
 			break;
 
-		PrintInfo();
+		if(argsboot == false)
+		{
+			PrintInfo();
 
-		PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*6, "Loading patched kernel... %d", STATUS_LOADING);
-		if(STATUS_LOADING == 0)
-		{
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*7, "ES_Init...");
-			// Cleans the -1 when it's past it to avoid confusion if another error happens. e.g. before it showed "81" instead of "8" if the controller was unplugged.
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X + 163, MENU_POS_Y + 20*6, " ");
-		}
-		if((STATUS_LOADING > 0 || abs(STATUS_LOADING) > 1) && STATUS_LOADING < 20)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*7, "ES_Init... Done!");
-		if(STATUS_LOADING == 2)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*8, "Initing storage devices...");
-		if(abs(STATUS_LOADING) > 2 && abs(STATUS_LOADING) < 20)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*8, "Initing storage devices... Done!");
-		if(STATUS_LOADING == -2)
-			PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*8, "Initing storage devices... Error! %d  Shutting down", STATUS_ERROR);
-		if(STATUS_LOADING == 3)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*9, "Mounting USB/SD device...");
-		if(abs(STATUS_LOADING) > 3 && abs(STATUS_LOADING) < 20)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*9, "Mounting USB/SD device... Done!");
-		if(STATUS_LOADING == -3)
-			PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*9, "Mounting USB/SD device... Error! %d  Shutting down", STATUS_ERROR);
-		if(STATUS_LOADING == 5) {
-/* 			if (timeout == 0)
-				timeout = ticks_to_secs(gettime()) + 20; // Set timer for 20 seconds
-			else if (timeout <= ticks_to_secs(gettime())) {
-				STATUS_ERROR = -7;
-				DCFlushRange(STATUS, 0x20);
-				usleep(100);
-				//memset( (void*)0x92f00000, 0, 0x100000 );
-				//DCFlushRange( (void*)0x92f00000, 0x100000 );
-				//ExitToLoader(1);
+			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*6, "Loading patched kernel... %d", STATUS_LOADING);
+			if(STATUS_LOADING == 0)
+			{
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*7, "ES_Init...");
+				// Cleans the -1 when it's past it to avoid confusion if another error happens. e.g. before it showed "81" instead of "8" if the controller was unplugged.
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X + 163, MENU_POS_Y + 20*6, " ");
+			}
+			if((STATUS_LOADING > 0 || abs(STATUS_LOADING) > 1) && STATUS_LOADING < 20)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*7, "ES_Init... Done!");
+			if(STATUS_LOADING == 2)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*8, "Initing storage devices...");
+			if(abs(STATUS_LOADING) > 2 && abs(STATUS_LOADING) < 20)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*8, "Initing storage devices... Done!");
+			if(STATUS_LOADING == -2)
+				PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*8, "Initing storage devices... Error! %d  Shutting down", STATUS_ERROR);
+			if(STATUS_LOADING == 3)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*9, "Mounting USB/SD device...");
+			if(abs(STATUS_LOADING) > 3 && abs(STATUS_LOADING) < 20)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*9, "Mounting USB/SD device... Done!");
+			if(STATUS_LOADING == -3)
+				PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*9, "Mounting USB/SD device... Error! %d  Shutting down", STATUS_ERROR);
+			if(STATUS_LOADING == 5) {
+	/* 			if (timeout == 0)
+					timeout = ticks_to_secs(gettime()) + 20; // Set timer for 20 seconds
+				else if (timeout <= ticks_to_secs(gettime())) {
+					STATUS_ERROR = -7;
+					DCFlushRange(STATUS, 0x20);
+					usleep(100);
+					//memset( (void*)0x92f00000, 0, 0x100000 );
+					//DCFlushRange( (void*)0x92f00000, 0x100000 );
+					//ExitToLoader(1);
+				}*/
+				PrintFormat(DEFAULT_SIZE, (STATUS_ERROR == -7) ? MAROON:BLACK, MENU_POS_X, MENU_POS_Y + 20*10, (STATUS_ERROR == -7) ? "Checking FS... Timeout!" : "Checking FS...");
+			}
+			if(abs(STATUS_LOADING) > 5 && abs(STATUS_LOADING) < 20)
+			{
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*10, "Checking FS... Done!");
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*11, "Drive size: %.02f%s Sector size: %d", STATUS_DRIVE, STATUS_GB_MB ? "GB" : "MB", STATUS_SECTOR);
+			}
+			if(STATUS_LOADING == -5)
+				PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*10, "Checking FS... Error! %d Shutting down", STATUS_ERROR);
+			if(STATUS_LOADING == 6)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*12, "ES_LoadModules...");
+			if(abs(STATUS_LOADING) > 6 && abs(STATUS_LOADING) < 20)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*12, "ES_LoadModules... Done!");
+			if(STATUS_LOADING == -6)
+				PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*12, "ES_LoadModules... Error! %d Shutting down", STATUS_ERROR);
+			if(STATUS_LOADING == 7)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*13, "Loading config...");
+			if(abs(STATUS_LOADING) > 7 && abs(STATUS_LOADING) < 20)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*13, "Loading config... Done!");
+			/*if(STATUS_LOADING == 8)
+			{
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... ");
+				if ( STATUS_ERROR == 1)
+				{
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "          Make sure the Controller is plugged in");
+				}
+				else
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "%50s", " ");
+			}
+			if(abs(STATUS_LOADING) > 8 && abs(STATUS_LOADING) < 20)
+			{
+				if (ncfg->Config & NIN_CFG_NATIVE_SI)
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using ONLY NATIVE Gamecube Ports");
+				else if ((ncfg->MaxPads == 1) && (ncfg->Config & NIN_CFG_HID))
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Gamecube and HID Ports");
+				else if ((ncfg->MaxPads > 0) && (ncfg->Config & NIN_CFG_HID))
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Gamecube, HID, and BT Ports");
+				else if (ncfg->MaxPads > 0)
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Gamecube and BT Ports");
+				else if (ncfg->Config & NIN_CFG_HID)
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using HID and Bluetooth Ports");
+				else
+					PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Bluetooth Ports... Done!");
+			}
+			if(STATUS_LOADING == -8)
+			{
+				PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Failed! Shutting down");
+				switch (STATUS_ERROR)
+				{
+					case -1:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "No Controller plugged in! %25s", " ");
+						break;
+					case -2:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Missing %s:/controller.ini %20s", GetRootDevice(), " ");
+						break;
+					case -3:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Controller does not match %s:/controller.ini %6s", GetRootDevice(), " ");
+						break;
+					case -4:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Invalid Polltype in %s:/controller.ini %12s", GetRootDevice(), " ");
+						break;
+					case -5:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Invalid DPAD value in %s:/controller.ini %9s", GetRootDevice(), " ");
+						break;
+					case -6:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "PS3 controller init error %25s", " ");
+						break;
+					case -7:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Gamecube adapter for Wii u init error %13s", " ");
+						break;
+					default:
+						PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Unknown error %d %35s", STATUS_ERROR, " ");
+						break;
+				}
 			}*/
-			PrintFormat(DEFAULT_SIZE, (STATUS_ERROR == -7) ? MAROON:BLACK, MENU_POS_X, MENU_POS_Y + 20*10, (STATUS_ERROR == -7) ? "Checking FS... Timeout!" : "Checking FS...");
+			if(STATUS_LOADING == 9)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init DI... %40s", " ");
+			if(abs(STATUS_LOADING) > 9 && abs(STATUS_LOADING) < 20)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init DI... Done! %35s", " ");
+			if(STATUS_LOADING == 10)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "Init CARD...");
+			if(abs(STATUS_LOADING) > 10 && abs(STATUS_LOADING) < 20)
+				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "Init CARD... Done!");
+			GRRLIB_Screen2Texture(0, 0, screen_buffer, GX_FALSE); // Copy all status messages
+			GRRLIB_Render();
+			ClearScreen();
 		}
-		if(abs(STATUS_LOADING) > 5 && abs(STATUS_LOADING) < 20)
-		{
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*10, "Checking FS... Done!");
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*11, "Drive size: %.02f%s Sector size: %d", STATUS_DRIVE, STATUS_GB_MB ? "GB" : "MB", STATUS_SECTOR);
-		}
-		if(STATUS_LOADING == -5)
-			PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*10, "Checking FS... Error! %d Shutting down", STATUS_ERROR);
-		if(STATUS_LOADING == 6)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*12, "ES_LoadModules...");
-		if(abs(STATUS_LOADING) > 6 && abs(STATUS_LOADING) < 20)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*12, "ES_LoadModules... Done!");
-		if(STATUS_LOADING == -6)
-			PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*12, "ES_LoadModules... Error! %d Shutting down", STATUS_ERROR);
-		if(STATUS_LOADING == 7)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*13, "Loading config...");
-		if(abs(STATUS_LOADING) > 7 && abs(STATUS_LOADING) < 20)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*13, "Loading config... Done!");
-		/*if(STATUS_LOADING == 8)
-		{
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... ");
-			if ( STATUS_ERROR == 1)
-			{
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "          Make sure the Controller is plugged in");
-			}
-			else
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "%50s", " ");
-		}
-		if(abs(STATUS_LOADING) > 8 && abs(STATUS_LOADING) < 20)
-		{
-			if (ncfg->Config & NIN_CFG_NATIVE_SI)
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using ONLY NATIVE Gamecube Ports");
-			else if ((ncfg->MaxPads == 1) && (ncfg->Config & NIN_CFG_HID))
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Gamecube and HID Ports");
-			else if ((ncfg->MaxPads > 0) && (ncfg->Config & NIN_CFG_HID))
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Gamecube, HID, and BT Ports");
-			else if (ncfg->MaxPads > 0)
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Gamecube and BT Ports");
-			else if (ncfg->Config & NIN_CFG_HID)
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using HID and Bluetooth Ports");
-			else
-				PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Using Bluetooth Ports... Done!");
-		}
-		if(STATUS_LOADING == -8)
-		{
-			PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*14, "Init HID devices... Failed! Shutting down");
-			switch (STATUS_ERROR)
-			{
-				case -1:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "No Controller plugged in! %25s", " ");
-					break;
-				case -2:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Missing %s:/controller.ini %20s", GetRootDevice(), " ");
-					break;
-				case -3:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Controller does not match %s:/controller.ini %6s", GetRootDevice(), " ");
-					break;
-				case -4:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Invalid Polltype in %s:/controller.ini %12s", GetRootDevice(), " ");
-					break;
-				case -5:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Invalid DPAD value in %s:/controller.ini %9s", GetRootDevice(), " ");
-					break;
-				case -6:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "PS3 controller init error %25s", " ");
-					break;
-				case -7:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Gamecube adapter for Wii u init error %13s", " ");
-					break;
-				default:
-					PrintFormat(DEFAULT_SIZE, MAROON, MENU_POS_X, MENU_POS_Y + 20*15, "Unknown error %d %35s", STATUS_ERROR, " ");
-					break;
-			}
-		}*/
-		if(STATUS_LOADING == 9)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init DI... %40s", " ");
-		if(abs(STATUS_LOADING) > 9 && abs(STATUS_LOADING) < 20)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*14, "Init DI... Done! %35s", " ");
-		if(STATUS_LOADING == 10)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "Init CARD...");
-		if(abs(STATUS_LOADING) > 10 && abs(STATUS_LOADING) < 20)
-			PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*15, "Init CARD... Done!");
-		GRRLIB_Screen2Texture(0, 0, screen_buffer, GX_FALSE); // Copy all status messages
-		GRRLIB_Render();
-		ClearScreen();
 		while((STATUS_LOADING < -1) && (STATUS_LOADING > -20)) //displaying a fatal error
 				; //do nothing wait for shutdown
 	}
-	DrawBuffer(); // Draw all status messages
-	PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*17, "Nintendont kernel looping, loading game...");
-	GRRLIB_Render();
-	DrawBuffer(); // Draw all status messages
+	if(argsboot == false)
+	{
+		DrawBuffer(); // Draw all status messages
+		PrintFormat(DEFAULT_SIZE, BLACK, MENU_POS_X, MENU_POS_Y + 20*17, "Nintendont kernel looping, loading game...");
+		GRRLIB_Render();
+		DrawBuffer(); // Draw all status messages
+	}
 //	memcpy( (void*)0x80000000, (void*)0x90140000, 0x1200000 );
 	GRRLIB_FreeTexture(background);
 	GRRLIB_FreeTexture(screen_buffer);
@@ -944,44 +1181,45 @@ int main(int argc, char **argv)
 	progressive = (ncfg->Config & NIN_CFG_FORCE_PROG)
 		&& !useipl && !useipltri;
 
-	switch (ncfg->GameID & 0x000000FF)
+	switch (BI2region)
 	{
-		// EUR
-		case 'D':
-		case 'F':
-		case 'H':
-		case 'I':
-		case 'M':
-		case 'P':
-		case 'S':
-		case 'U':
-		case 'X':
-		case 'Y':
-		case 'Z':
-			if(progressive || (vidForce && (vidForceMode == NIN_VID_FORCE_PAL60 ||
-				vidForceMode == NIN_VID_FORCE_MPAL || vidForceMode == NIN_VID_FORCE_NTSC)))
+		case BI2_REGION_PAL:
+			if (progressive || (vidForce &&
+			    (vidForceMode == NIN_VID_FORCE_PAL60 ||
+			     vidForceMode == NIN_VID_FORCE_MPAL ||
+			     vidForceMode == NIN_VID_FORCE_NTSC)))
+			{
+				// PAL60 and/or PAL-M
 				*(vu32*)0x800000CC = 5;
+			}
 			else
+			{
+				// PAL50
 				*(vu32*)0x800000CC = 1;
+			}
 			vmode = &TVPal528IntDf;
 			break;
-		//US
-		case 'E':
-			if((vidForce && vidForceMode == NIN_VID_FORCE_MPAL)
-				|| (!vidForce && CONF_GetVideo() == CONF_VIDEO_MPAL))
+
+		case BI2_REGION_USA:
+			if ((vidForce && vidForceMode == NIN_VID_FORCE_MPAL) ||
+			    (!vidForce && CONF_GetVideo() == CONF_VIDEO_MPAL))
 			{
+				// PAL-M
 				*(vu32*)0x800000CC = 3;
 				vmode = &TVMpal480IntDf;
 			}
 			else
 			{
+				// NTSC
 				*(vu32*)0x800000CC = 0;
 				vmode = &TVNtsc480IntDf;
 			}
 			break;
-		//JP
-		case 'J':
+
+		case BI2_REGION_JAPAN:
+		case BI2_REGION_SOUTH_KOREA:
 		default:
+			// NTSC
 			*(vu32*)0x800000CC = 0;
 			vmode = &TVNtsc480IntDf;
 			break;
@@ -1013,22 +1251,33 @@ int main(int argc, char **argv)
 		syssram *sram;
 		sram = __SYS_LockSram();
 		sram->display_offsetH = 0;	// Clear Offset
-		sram->ntd		&= ~0x40;	// Clear PAL60
 		sram->flags		&= ~0x80;	// Clear Progmode
 		sram->flags		&= ~3;		// Clear Videomode
-		switch(ncfg->GameID & 0xFF)
+
+		// PAL60 flag.
+		if (BI2region == BI2_REGION_PAL)
 		{
-			case 'E':
-			case 'J':
-				//BMX XXX doesnt even boot on a real gc with component cables
-				if( (ncfg->GameID >> 8) != 0x474233 &&
-					(ncfg->VideoMode & NIN_VID_PROG) )
-					sram->flags |= 0x80;	// Set Progmode
-				break;
-			default:
-				sram->ntd		|= 0x40;	// Set PAL60
-				break;
+			// Enable PAL60.
+			sram->ntd |= 0x40;
+
+			// TODO: Set the progressive scan flag on PAL?
 		}
+		else
+		{
+			// Disable PAL60.
+			sram->ntd &= 0x40;
+
+			// Set the progressive scan flag if a component cable
+			// is connected (or HDMI on Wii U), unless we're loading
+			// BMX XXX, since that game won't even boot on a real
+			// GameCube if a component cable is connected.
+			if ((ncfg->GameID >> 24) != 0x474233 &&
+			    (ncfg->VideoMode & NIN_VID_PROG))
+			{
+				sram->flags |= 0x80;
+			}
+		}
+
 		if(*(vu32*)0x800000CC == 1 || *(vu32*)0x800000CC == 5)
 			sram->flags	|= 1; //PAL Video Mode
 		__SYS_UnlockSram(1); // 1 -> write changes

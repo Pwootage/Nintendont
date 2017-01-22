@@ -33,15 +33,15 @@
 #include "exi.h"
 #include "ssl.h"
 
-char *http_host;
-u16 http_port;
-char *http_path;
-u32 http_max_size;
+static char *http_host;
+static u16 http_port;
+static char *http_path;
+static u32 http_max_size;
 
-http_res result;
-u32 http_status;
-u32 content_length;
-u8 *http_data;
+static http_res result;
+static unsigned int http_status;
+static unsigned int content_length;
+static u8 *http_data;
 
 
 s32 tcp_socket (void) {
@@ -491,12 +491,16 @@ bool http_post (const char *url, const u32 max_size, const char *postData) {
 	return true;
 }
 
-bool http_get_result (u32 *_http_status, u8 **content, u32 *length) {
+bool http_get_result (unsigned int *_http_status, u8 **content, unsigned int *length) {
 	if (http_status) *_http_status = http_status;
 
 	if (result == HTTPR_OK) {
-		*content = http_data;
-		*length = content_length;
+		if (content) {
+			*content = http_data;
+		}
+		if (length) {
+			*length = content_length;
+		}
 
 	} else {
 		*content = NULL;
@@ -505,6 +509,8 @@ bool http_get_result (u32 *_http_status, u8 **content, u32 *length) {
 
 	free (http_host);
 	free (http_path);
+	http_host = NULL;
+	http_path = NULL;
 
 	return true;
 }

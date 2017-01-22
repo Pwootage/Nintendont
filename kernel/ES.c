@@ -27,9 +27,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 extern int dbgprintf( const char *fmt, ...);
 #endif
 
-char *path		= (char*)NULL;
-u32 *size		= (u32*)NULL;
-u64 *iTitleID	= (u64*)NULL;
+static char *path	= (char*)NULL;
+static u32 *size	= (u32*)NULL;
+static u64 *iTitleID	= (u64*)NULL;
 
 static u64 TitleID ALIGNED(32);
 static u32 KernelVersion ALIGNED(32);
@@ -42,16 +42,14 @@ static u32 *CNTMapDirty;
 
 static u64 *TTitles;
 
-u64 *TTitlesO;
-u32 TOCount;
-u32 TOCountDirty;
+static u64 *TTitlesO;
+static u32 TOCount;
+static u32 TOCountDirty;
 
-u32 *KeyID = (u32*)NULL;
+static u32 *KeyID = (u32*)NULL;
 
-TitleMetaData *iTMD = (TitleMetaData *)NULL;			//used for information during title import
-static u8 *iTIK		= (u8 *)NULL;						//used for information during title import
-
-u16 TitleVersion;
+static TitleMetaData *iTMD = (TitleMetaData *)NULL;	//used for information during title import
+static u8 *iTIK		= (u8 *)NULL;			//used for information during title import
 
 // General ES functions
 
@@ -90,7 +88,7 @@ u32 ES_Init( u8 *MessageHeap )
 #endif
 	ES_BootSystem();
 
-	dbgprintf("ES:TitleID:%08x-%08x version:%d\r\n", (u32)((TitleID)>>32), (u32)(TitleID), TitleVersion );
+	dbgprintf("ES:TitleID:%08x-%08x\r\n", (u32)((TitleID)>>32), (u32)(TitleID) );
 
 	return MessageQueue;
 }

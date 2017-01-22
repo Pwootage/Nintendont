@@ -22,18 +22,48 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define __MENU_H__
 
 #include <gctypes.h>
+#include <ogc/video.h>
 
 #define MAX_GAMES 1024
 
+typedef enum
+{
+	// Disc format.
+	GIFLAG_FORMAT_FULL	= (0 << 0),	// 1:1 rip
+	GIFLAG_FORMAT_SHRUNKEN	= (1 << 0),	// Shrunken via DiscEX
+	GIFLAG_FORMAT_FST	= (2 << 0),	// Extracted FST
+	GIFLAG_FORMAT_CISO	= (3 << 0),	// CISO format
+	GIFLAG_FORMAT_MULTI	= (4 << 0),	// Multi-game disc
+	GIFLAG_FORMAT_MASK	= (7 << 0),
+
+	// Game region. (from bi2.bin)
+	// BI2region_codes values, lshifted by 2.
+	GIFLAG_REGION_MASK	= (3 << 3),
+
+	// Disc number, lshifted by 5.
+	GIFLAG_DISCNUMBER_MASK	= (3 << 5),
+
+	// GameInfo.Name was allocated via strdup()
+	// and must be freed.
+	GIFLAG_NAME_ALLOC	= (1 << 7),
+} GameInfoFlags;
+
 typedef struct GameInfo 
 {
+	// NOTE: Disc number is stored in Flags.
+	// There aren't any games that take up more
+	// than 2 discs, so we're using two bits in
+	// Flags for the disc number now.
 	char ID[6];		// ID6 of the game.
-	uint8_t NameAlloc;	// If non-zero, Name was allocated via strdup().
-	                        // Otherwise, it should NOT be free()'d!
-	uint8_t DiscNumber;	// Disc number.
+	uint8_t Revision;	// Disc revision.
+	uint8_t Flags;		// See GameInfoFlags.
+
 	char *Name;		// Game name. (If NameAlloc, strdup()'d.)
 	char *Path;		// File path.
 } gameinfo;
+
+// Disc format colors.
+extern const u32 DiscFormatColors[8];
 
 void HandleSTMEvent(u32 event);
 void HandleWiiMoteEvent(s32 chan);
@@ -69,6 +99,19 @@ static inline void ShowLoadingScreen(void)
  */
 void PrintInfo(void);
 
+/**
+ * Print button actions.
+ * Call this function after PrintInfo().
+ *
+ * If any button action is NULL, that button won't be displayed.
+ *
+ * @param btn_home	[in,opt] Home button action.
+ * @param btn_a		[in,opt] A button action.
+ * @param btn_b		[in,opt] B button action.
+ * @param btn_x1	[in,opt] X/1 button action.
+ */
+void PrintButtonActions(const char *btn_home, const char *btn_a, const char *btn_b, const char *btn_x1);
+
 typedef enum {
 	LKERR_UNKNOWN,
 	LKERR_ES_GetStoredTMDSize,
@@ -91,7 +134,7 @@ typedef enum {
  * @param iosErr IOS loading error ID.
  * @param err Return value from the IOS function.
  */
-void PrintLoadKernelError(LoadKernelError_t iosErr, s32 err);
+void PrintLoadKernelError(LoadKernelError_t iosErr, int err);
 
 void ReconfigVideo( GXRModeObj *vidmode );
 #endif

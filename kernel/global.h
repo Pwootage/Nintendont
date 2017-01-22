@@ -18,7 +18,7 @@
 #define TRI_DI_PATCH 1
 
 //#define DEBUG_ES	1
-#define DEBUG_HID	1
+//#define DEBUG_HID	1
 //#define DEBUG_DI	1
 //#define DEBUG_JVSIO 1
 //#define DEBUG_GCAM 1
@@ -379,6 +379,13 @@ static inline void sync_after_write_align32(void *Buf, u32 Len)
 
 #define RESET_STATUS 0x13003420
 
-#define IsWiiU ( (*(u32*)0x0d8005A0 >> 16 ) == 0xCAFE )
+/**
+ * Is this system a Wii U?
+ * @return True if this is Wii U; false if not.
+ */
+static inline bool IsWiiU(void)
+{
+	return ((*(vu32*)(0x0d8005A0) >> 16) == 0xCAFE);
+}
 
 #endif
