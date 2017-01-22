@@ -216,11 +216,14 @@ u32 NetThread(void *arg) {
 
     while (1) {
       string dump = primeMemoryDump();
-      char *buff = reinterpret_cast<char *>(heap_alloc_aligned(0, dump.size(), 32));
-      memcpy(buff, dump.c_str(), dump.size());
+      size_t len = dump.size();
+      char *buff = reinterpret_cast<char *>(heap_alloc_aligned(0, len + 4, 32));
+      memcpy(buff + 4, dump.c_str(), len);
+
+      reinterpret_cast<u32*>(buff)[0] = len;
 
       sendVec[0].data = buff;
-      sendVec[0].len = dump.size();
+      sendVec[0].len = len + 4;
       sendVec[1].data = sParams;
       sendVec[1].len = sizeof(struct sendto_params);
 

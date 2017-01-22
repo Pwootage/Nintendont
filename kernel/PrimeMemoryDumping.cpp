@@ -35,7 +35,7 @@ string primeMemoryDump() {
 
 //  char buff[32];
 //  _sprintf(buff, "%lu", count);
-  return string("");
+  return string("{\"pool_summary\":{\"count\":1}}");
 };
 
 float readFloatFromGCMemory(u32 addr) {

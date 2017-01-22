@@ -34,7 +34,7 @@ CXXFLAGS := -std=c++14 -Wno-unknown-pragmas -Wno-pragmas -Wno-missing-declaratio
 		-Wno-unused-variable -Wno-strict-aliasing
 
 ASFLAGS	:= -mbig-endian -mcpu=arm926ej-s
-LDFLAGS	:= -static -nostartfiles -nodefaultlibs -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n \
+LDFLAGS	:= -static -nostartfiles -mbig-endian -Wl,--gc-sections,-T,kernel.ld,-Map,kernel.map -n \
             -fno-exceptions
 
 TARGET	:= kernel.elf
@@ -44,7 +44,7 @@ OBJECTS	:= start.o common.o alloc.o GCAM.o JVSIO.o JVSIOMessage.o FST.o DI.o Rea
 	   main.o syscalls.o ReadSpeed.o vsprintf.o string.o prs.o \
 	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o new.o
 
-LIBS	:= ../fatfs/libfatfs-arm.a be/libgcc.a be/libc.a be/libstdc++.a
+LIBS	:= ../fatfs/libfatfs-arm.a be/libgcc.a be/libc.a be/libstdc++.a be/libsupc++.a be/libm.a be/libsysbase.a
 ZIPFILE	:= ../loader/data/kernel.zip
 
 # Bluetooth stack
