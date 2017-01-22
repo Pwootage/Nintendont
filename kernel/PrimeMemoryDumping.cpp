@@ -3,8 +3,9 @@
 //
 
 #include "PrimeMemoryDumping.h"
-#include "PrimeMemoryDumping/prime1/CGameGlobalObjects.hpp"
+#include "prime1/Prime1ConsoleDumper.hpp"
 #include "string.h"
+#include <cstdio>
 
 #define GET_PTR(value) (P2C(value))
 #define MEM_HIGH (0x2400000)
@@ -15,27 +16,13 @@
 
 using namespace std;
 
-string primeMemoryDump() {
+void primeMemoryDump(MemoryBuffer &buff) {
   u32 gameID = read32FromGCMemory(0x00);
   u16 makerID = read16FromGCMemory(0x04);
 
-//  json json_message;
-
-  u32 count = 0;
   if (gameID == PRIME_1_GAMEID && makerID == PRIME_1_MAKERID) {
-    CGameGlobalObjects global(CGameGlobalObjects::LOCATION);
-    count = global.mainPool.resources.size.read();
-    //        json_message["heap"] = Prime1JsonDumper::parseHeap();
-//    json_message["camera"] = Prime1JsonDumper::parseCamera();
-//        json_message["player"] = Prime1JsonDumper::parsePlayer();
-//    json_message["player_raw"] = Prime1JsonDumper::parsePlayerRaw();
-//    json_message["world"] = Prime1JsonDumper::parseWorld();
-//    json_message["pool_summary"] = Prime1JsonDumper::parsePoolSummary();
+    Prime1ConsoleDumper::dump(buff);
   }
-
-//  char buff[32];
-//  _sprintf(buff, "%lu", count);
-  return string("{\"pool_summary\":{\"count\":1}}");
 };
 
 float readFloatFromGCMemory(u32 addr) {

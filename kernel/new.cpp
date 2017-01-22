@@ -5,13 +5,12 @@
 #include "global.h"
 #include "alloc.h"
 
-
 void *operator new(size_t count) {
   return malloc(count);
 }
 
 void *operator new[](size_t count) {
-  return malloc(count);
+  return malloca(count, 32);
 }
 
 void operator delete(void *ptr) noexcept {

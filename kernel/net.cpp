@@ -2,6 +2,7 @@
 #include "common.h"
 #include "string.h"
 #include "net.h"
+#include "MemoryBuffer.hpp"
 #include "PrimeMemoryDumping.h"
 #include "Config.h"
 
@@ -214,16 +215,17 @@ u32 NetThread(void *arg) {
     sParams->flags = 0;
     sParams->has_destaddr = 0;
 
+    MemoryBuffer dump(0x1000);
     while (1) {
-      string dump = primeMemoryDump();
-      size_t len = dump.size();
-      char *buff = reinterpret_cast<char *>(heap_alloc_aligned(0, len + 4, 32));
-      memcpy(buff + 4, dump.c_str(), len);
-
-      reinterpret_cast<u32*>(buff)[0] = len;
+      dump.clear();
+      dump.seek(4); //Make room for size later
+      primeMemoryDump(dump);
+      size_t len = dump.size(); //get the size
+      char* buff = dump.getBuff();
+      reinterpret_cast<u32*>(buff)[0] = len - 4; //subtract four for reading purposes on the dest
 
       sendVec[0].data = buff;
-      sendVec[0].len = len + 4;
+      sendVec[0].len = len;
       sendVec[1].data = sParams;
       sendVec[1].len = sizeof(struct sendto_params);
 

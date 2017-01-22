@@ -11,6 +11,7 @@
 #include "global.h"
 #include "common.h"
 #include "alloc.h"
+#include "MemoryBuffer.hpp"
 //#include "PrimeMemoryDumping/prime1/Prime1JsonDumper.hpp"
 
 #define PACKET_TYPE_GAME_DATA (0x1)
@@ -18,7 +19,7 @@
 #define PACKET_TYPE_INVALID (0xFF)
 #define INVENTORY_SIZE (0x29)
 
-std::string primeMemoryDump();
+void primeMemoryDump(MemoryBuffer &buff);
 float readFloatFromGCMemory(u32 addr);
 u64 read64FromGCMemory(u32 addr);
 u32 read32FromGCMemory(u32 addr);

@@ -27,7 +27,7 @@ COMMONFLAGS := -mbig-endian -O3 -I. -Wall \
 		-mcpu=arm926ej-s -msoft-float -mfloat-abi=soft \
 		-fdata-sections -ffunction-sections -fno-builtin-toupper -fno-builtin-memcpy \
 		-fno-builtin-memset -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free \
-		-fno-exceptions -DJSON_NOEXCEPTION=true
+		-fno-exceptions -DJSON_NOEXCEPTION=true -DPRIME_DUMP_JSON=true
 CFLAGS	 := -std=gnu89
 CPPFLAGS := -I. -I../fatfs -I./PrimeMemoryDumping -I./PrimeMemoryDumping/common -I../codehandler
 CXXFLAGS := -std=c++14 -Wno-unknown-pragmas -Wno-pragmas -Wno-missing-declarations -Wno-shadow \
@@ -42,7 +42,8 @@ OBJECTS	:= start.o common.o alloc.o GCAM.o JVSIO.o JVSIOMessage.o FST.o DI.o Rea
 	   Patch.o PatchTimers.o TRI.o PatchWidescreen.o ISO.o Stream.o adp.o \
 	   EXI.o SRAM.o SI.o HID.o diskio.o Config.o utils_asm.o ES.o NAND.o \
 	   main.o syscalls.o ReadSpeed.o vsprintf.o string.o prs.o \
-	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o new.o
+	   SDI.o usb.o usbstorage.o PrimeMemoryDumping.o net.o new.o \
+	   PrimeMemoryDumping/prime1/Prime1ConsoleDumper.o PrimeMemoryDumping/common/MemoryBuffer.o
 
 LIBS	:= ../fatfs/libfatfs-arm.a be/libgcc.a be/libc.a be/libstdc++.a be/libsupc++.a be/libm.a be/libsysbase.a
 ZIPFILE	:= ../loader/data/kernel.zip
@@ -59,7 +60,7 @@ all: $(TARGET)
 $(TARGET): kernel.ld $(OBJECTS)
 	@echo  "LD	$@"
 	$(LD) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
-	@$(STRIP) -s -g kernel.elf -o kernel.bin
+	@$(STRIP) -s kernel.elf -o kernel.bin
 	@echo  "ZIP	$(ZIPFILE)"
 	@$(ZIP) -JXjq9 $(ZIPFILE) kernel.bin
 

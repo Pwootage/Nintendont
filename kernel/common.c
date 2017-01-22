@@ -235,3 +235,7 @@ u32 GetCurrentTime()
 void abort() {
 	Shutdown();
 }
+
+void __end__() {
+	abort();
+}
