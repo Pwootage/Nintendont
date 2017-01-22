@@ -6,6 +6,7 @@
 #include "Config.h"
 
 using namespace std;
+using namespace nlohmann;
 
 //Defines taken from libogc's network.h and network_wii.c
 
@@ -126,17 +127,15 @@ struct setsockopt_params {
     u8 optval[20];
 };
 
-struct ioctl_vector
-{
+struct ioctl_vector {
     void *data;
     unsigned int len;
 } __attribute__((packed));
 
 /* IOCTL vector */
-struct ioctlv
-{
+struct ioctlv {
     void *data;
-    u32   len;
+    u32 len;
 };
 
 u32 netStart = 0;
@@ -157,7 +156,7 @@ u32 NetThread(void *arg) {
   }
 
   const char *soDev = "/dev/net/ip/top";
-  char *name = reinterpret_cast<char*>(heap_alloc_aligned(0, 32, 32));
+  char *name = reinterpret_cast<char *>(heap_alloc_aligned(0, 32, 32));
   memcpy(name, soDev, 32);
   int soFd = IOS_Open(name, 0);
   heap_free(0, name);
@@ -201,7 +200,9 @@ u32 NetThread(void *arg) {
   //*(volatile unsigned int*)0x120F0000 = ip;
   //sync_after_write((void*)0x120F0000, 0x20);
 
-  struct sendto_params *sParams = reinterpret_cast<struct sendto_params *>(heap_alloc_aligned(0, sizeof(struct sendto_params), 32));
+  struct sendto_params *sParams = reinterpret_cast<struct sendto_params *>(heap_alloc_aligned(0,
+                                                                                              sizeof(struct sendto_params),
+                                                                                              32));
   struct ioctlv *sendVec = reinterpret_cast<struct ioctlv *>(heap_alloc_aligned(0, sizeof(ioctlv) * 2, 32));
 
   while (1) {
@@ -219,23 +220,23 @@ u32 NetThread(void *arg) {
     sParams->has_destaddr = 0;
 
     while (1) {
-      unique_ptr<PrimeMemoryDump> dump = primeMemoryDump();
-      char *buff = reinterpret_cast<char*>(heap_alloc_aligned(0, sizeof(PrimeMemoryDump), 32));
-      memcpy(buff, dump.get(), sizeof(PrimeMemoryDump));
+      json json = primeMemoryDump();
+      string dump = json.dump();
+      char *buff = reinterpret_cast<char *>(heap_alloc_aligned(0, dump.size(), 32));
+      memcpy(buff, dump.c_str(), dump.size());
 
       sendVec[0].data = buff;
-      sendVec[0].len = sizeof(PrimeMemoryDump);
+      sendVec[0].len = dump.size();
       sendVec[1].data = sParams;
       sendVec[1].len = sizeof(struct sendto_params);
 
-      if (dump->type != PACKET_TYPE_INVALID) {
-        //SOSendTo
-        s32 err = IOS_Ioctlv(soFd, IOCTLV_SO_SENDTO, 2, 0, sendVec);
+      //SOSendTo
+      s32 err = IOS_Ioctlv(soFd, IOCTLV_SO_SENDTO, 2, 0, sendVec);
 
-        if (err < 0) {
-          break; //Something went wrong
-        }
+      if (err < 0) {
+        break; //Something went wrong
       }
+
       heap_free(0, buff);
       mdelay(10);
     }

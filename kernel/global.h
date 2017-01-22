@@ -1,9 +1,12 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+#define NINTENDONT
 #define DEBUG		1
+#ifndef __cplusplus
 #define false		0
 #define true		1
+#endif
 //#define CHEATMENU	1
 #define EXIPATCH	1
 #define CHEATS		1

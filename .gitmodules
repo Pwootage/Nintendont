@@ -1,0 +1,3 @@
+[submodule "kernel/PrimeMemoryDumping"]
+	path = kernel/PrimeMemoryDumping
+	url = https://github.com/Pwootage/PrimeMemoryDumping.git

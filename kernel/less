@@ -1,0 +1,189 @@
+In file included from PrimeMemoryDumping/prime1/Prime1JsonDumper.hpp:4:0,
+                 from PrimeMemoryDumping.h:13,
+                 from PrimeMemoryDumping.cpp:5:
+PrimeMemoryDumping/common/json.hpp: In member function 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::value_type& nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::at(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::size_type)':
+PrimeMemoryDumping/common/json.hpp:3159:67: error: 'to_string' is not a member of 'std'
+                     JSON_THROW(std::out_of_range("array index " + std::to_string(idx) + " is out of range"));
+                                                                   ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp: In member function 'const value_type& nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::at(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::size_type) const':
+PrimeMemoryDumping/common/json.hpp:3202:67: error: 'to_string' is not a member of 'std'
+                     JSON_THROW(std::out_of_range("array index " + std::to_string(idx) + " is out of range"));
+                                                                   ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp: In member function 'void nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::erase(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::size_type)':
+PrimeMemoryDumping/common/json.hpp:4172:67: error: 'to_string' is not a member of 'std'
+                     JSON_THROW(std::out_of_range("array index " + std::to_string(idx) + " is out of range"));
+                                                                   ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp: In member function 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::string_t nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::iteration_proxy<IteratorType>::iteration_proxy_internal::key() const':
+PrimeMemoryDumping/common/json.hpp:6645:36: error: 'to_string' is not a member of 'std'
+                             return std::to_string(array_index);
+                                    ^
+PrimeMemoryDumping/common/json.hpp: In member function 'long double nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::lexer::str_to_float_t(long double*, char**) const':
+PrimeMemoryDumping/common/json.hpp:8987:24: error: 'strtold' is not a member of 'std'
+                 return std::strtold(reinterpret_cast<typename string_t::const_pointer>(m_start), endptr);
+                        ^
+PrimeMemoryDumping/common/json.hpp:8987:24: note: suggested alternative:
+In file included from string.h:42:0,
+                 from PrimeMemoryDumping.h:9,
+                 from PrimeMemoryDumping.cpp:5:
+/opt/devkitpro/devkitARM/arm-none-eabi/include/stdlib.h:279:20: note:   'strtold'
+ extern long double strtold (const char *__restrict, char **__restrict);
+                    ^
+In file included from PrimeMemoryDumping/prime1/Prime1JsonDumper.hpp:4:0,
+                 from PrimeMemoryDumping.h:13,
+                 from PrimeMemoryDumping.cpp:5:
+PrimeMemoryDumping/common/json.hpp: In member function 'float nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::lexer::str_to_float_t(float*, char**) const':
+PrimeMemoryDumping/common/json.hpp:9027:24: error: 'strtof' is not a member of 'std'
+                 return std::strtof(reinterpret_cast<typename string_t::const_pointer>(m_start), endptr);
+                        ^
+PrimeMemoryDumping/common/json.hpp:9027:24: note: suggested alternative:
+In file included from /opt/devkitpro/devkitARM/arm-none-eabi/include/wchar.h:4:0,
+                 from /opt/devkitpro/devkitARM/arm-none-eabi/include/c++/5.3.0/cwchar:44,
+                 from /opt/devkitpro/devkitARM/arm-none-eabi/include/c++/5.3.0/bits/postypes.h:40,
+                 from /opt/devkitpro/devkitARM/arm-none-eabi/include/c++/5.3.0/iosfwd:40,
+                 from /opt/devkitpro/devkitARM/arm-none-eabi/include/c++/5.3.0/memory:72,
+                 from PrimeMemoryDumping.h:8,
+                 from PrimeMemoryDumping.cpp:5:
+/opt/devkitpro/devkitARM/arm-none-eabi/include/stdlib.h:137:7: note:   'strtof'
+ float _EXFUN(strtof,(const char *__restrict __n, char **__restrict __end_PTR));
+       ^
+In file included from PrimeMemoryDumping/prime1/Prime1JsonDumper.hpp:4:0,
+                 from PrimeMemoryDumping.h:13,
+                 from PrimeMemoryDumping.cpp:5:
+PrimeMemoryDumping/common/json.hpp: In member function 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::value_type& nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::get_and_create(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::reference) const':
+PrimeMemoryDumping/common/json.hpp:9593:81: error: 'stoi' is not a member of 'std'
+                             result = &result->operator[](static_cast<size_type>(std::stoi(reference_token)));
+                                                                                 ^
+PrimeMemoryDumping/common/json.hpp: In member function 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::value_type& nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::get_unchecked(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::pointer) const':
+PrimeMemoryDumping/common/json.hpp:9685:79: error: 'stoi' is not a member of 'std'
+                                 ptr = &ptr->operator[](static_cast<size_type>(std::stoi(reference_token)));
+                                                                               ^
+PrimeMemoryDumping/common/json.hpp: In member function 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::value_type& nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::get_checked(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::pointer) const':
+PrimeMemoryDumping/common/json.hpp:9719:62: error: 'to_string' is not a member of 'std'
+                                                              std::to_string(ptr->m_value.array->size()) +
+                                                              ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp:9730:67: error: 'stoi' is not a member of 'std'
+                             ptr = &ptr->at(static_cast<size_type>(std::stoi(reference_token)));
+                                                                   ^
+PrimeMemoryDumping/common/json.hpp: In member function 'const value_type& nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::get_unchecked(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::const_pointer) const':
+PrimeMemoryDumping/common/json.hpp:9771:62: error: 'to_string' is not a member of 'std'
+                                                              std::to_string(ptr->m_value.array->size()) +
+                                                              ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp:9782:75: error: 'stoi' is not a member of 'std'
+                             ptr = &ptr->operator[](static_cast<size_type>(std::stoi(reference_token)));
+                                                                           ^
+PrimeMemoryDumping/common/json.hpp: In member function 'const value_type& nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::get_checked(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::const_pointer) const':
+PrimeMemoryDumping/common/json.hpp:9815:62: error: 'to_string' is not a member of 'std'
+                                                              std::to_string(ptr->m_value.array->size()) +
+                                                              ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp:9826:67: error: 'stoi' is not a member of 'std'
+                             ptr = &ptr->at(static_cast<size_type>(std::stoi(reference_token)));
+                                                                   ^
+PrimeMemoryDumping/common/json.hpp: In static member function 'static void nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::flatten(const string&, const nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>&, nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>&)':
+PrimeMemoryDumping/common/json.hpp:9973:66: error: 'to_string' is not a member of 'std'
+                                 flatten(reference_string + "/" + std::to_string(i),
+                                                                  ^
+PrimeMemoryDumping/common/json.hpp: In lambda function:
+PrimeMemoryDumping/common/json.hpp:10352:50: error: 'stoi' is not a member of 'std'
+                                 const auto idx = std::stoi(last_path);
+                                                  ^
+PrimeMemoryDumping/common/json.hpp:10356:83: error: 'to_string' is not a member of 'std'
+                                     JSON_THROW(std::out_of_range("array index " + std::to_string(idx) + " is out of range"));
+                                                                                   ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp: In lambda function:
+PrimeMemoryDumping/common/json.hpp:10400:57: error: 'stoi' is not a member of 'std'
+                     parent.erase(static_cast<size_type>(std::stoi(last_path)));
+                                                         ^
+PrimeMemoryDumping/common/json.hpp: In static member function 'static nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType> nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::diff(const nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>&, const nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>&, const string&)':
+PrimeMemoryDumping/common/json.hpp:10601:86: error: 'to_string' is not a member of 'std'
+                             auto temp_diff = diff(source[i], target[i], path + "/" + std::to_string(i));
+                                                                                      ^
+PrimeMemoryDumping/common/json.hpp:10618:59: error: 'to_string' is not a member of 'std'
+                                     {"path", path + "/" + std::to_string(i)}
+                                                           ^
+PrimeMemoryDumping/common/json.hpp:10629:59: error: 'to_string' is not a member of 'std'
+                                     {"path", path + "/" + std::to_string(i)},
+                                                           ^
+PrimeMemoryDumping.cpp: At global scope:
+PrimeMemoryDumping.cpp:15:17: error: 'nlnlohmann' is not a namespace-name
+ using namespace nlnlohmann;
+                 ^
+PrimeMemoryDumping.cpp:15:27: error: expected namespace-name before ';' token
+ using namespace nlnlohmann;
+                           ^
+PrimeMemoryDumping.cpp:17:1: error: 'json' does not name a type
+ json primeMemoryDump() {
+ ^
+In file included from PrimeMemoryDumping/prime1/Prime1JsonDumper.hpp:4:0,
+                 from PrimeMemoryDumping.h:13,
+                 from PrimeMemoryDumping.cpp:5:
+PrimeMemoryDumping/common/json.hpp: In instantiation of 'static std::vector<std::__cxx11::basic_string<char> > nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::split(const string&) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; std::__cxx11::string = std::__cxx11::basic_string<char>]':
+PrimeMemoryDumping/common/json.hpp:9487:41:   required from 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_pointer::json_pointer(const string&) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; std::__cxx11::string = std::__cxx11::basic_string<char>]'
+PrimeMemoryDumping/common/json.hpp:10792:58:   required from here
+PrimeMemoryDumping/common/json.hpp:9854:96: error: exception handling disabled, use -fexceptions to enable
+                     JSON_THROW(std::domain_error("JSON pointer must be empty or begin with '/'"));
+                                                                                                ^
+PrimeMemoryDumping/common/json.hpp:93:37: note: in definition of macro 'JSON_THROW'
+ #define JSON_THROW(exception) throw exception
+                                     ^
+PrimeMemoryDumping/common/json.hpp: In instantiation of 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType> nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::parser::parse_internal(bool) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator]':
+PrimeMemoryDumping/common/json.hpp:9198:51:   required from 'nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType> nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::parser::parse() [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator]'
+PrimeMemoryDumping/common/json.hpp:6041:41:   required from 'static nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType> nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::parse(IteratorType, IteratorType, nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::parser_callback_t) [with IteratorType = const char*; typename std::enable_if<std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<_InputIterator>::iterator_category>::value, int>::type <anonymous> = 0; ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::parser_callback_t = std::function<bool(int, nlohmann::basic_json<>::parse_event_t, nlohmann::basic_json<>&)>]'
+PrimeMemoryDumping/common/json.hpp:10774:42:   required from here
+PrimeMemoryDumping/common/json.hpp:9370:40: error: conversion from 'int' to 'nlohmann::basic_json<>::json_value' is ambiguous
+                         result.m_value = true;
+                                        ^
+PrimeMemoryDumping/common/json.hpp:832:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_float_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_float_t = double]
+             json_value(number_float_t v) noexcept : number_float(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:830:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_unsigned_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_unsigned_t = long long unsigned int]
+             json_value(number_unsigned_t v) noexcept : number_unsigned(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:828:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_integer_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_integer_t = long long int]
+             json_value(number_integer_t v) noexcept : number_integer(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:826:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::boolean_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::boolean_t = bool]
+             json_value(boolean_t v) noexcept : boolean(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:806:15: note:   initializing argument 1 of 'nlohmann::basic_json<>::json_value& nlohmann::basic_json<>::json_value::operator=(nlohmann::basic_json<>::json_value&&)'
+         union json_value
+               ^
+PrimeMemoryDumping/common/json.hpp:9378:40: error: conversion from 'int' to 'nlohmann::basic_json<>::json_value' is ambiguous
+                         result.m_value = false;
+                                        ^
+PrimeMemoryDumping/common/json.hpp:832:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_float_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_float_t = double]
+             json_value(number_float_t v) noexcept : number_float(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:830:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_unsigned_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_unsigned_t = long long unsigned int]
+             json_value(number_unsigned_t v) noexcept : number_unsigned(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:828:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_integer_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::number_integer_t = long long int]
+             json_value(number_integer_t v) noexcept : number_integer(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:826:13: note: candidate: nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::json_value::json_value(nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::boolean_t) [with ObjectType = std::map; ArrayType = std::vector; StringType = std::__cxx11::basic_string<char>; BooleanType = bool; NumberIntegerType = long long int; NumberUnsignedType = long long unsigned int; NumberFloatType = double; AllocatorType = std::allocator; nlohmann::basic_json<ObjectType, ArrayType, StringType, BooleanType, NumberIntegerType, NumberUnsignedType, NumberFloatType, AllocatorType>::boolean_t = bool]
+             json_value(boolean_t v) noexcept : boolean(v) {}
+             ^
+PrimeMemoryDumping/common/json.hpp:806:15: note:   initializing argument 1 of 'nlohmann::basic_json<>::json_value& nlohmann::basic_json<>::json_value::operator=(nlohmann::basic_json<>::json_value&&)'
+         union json_value
+               ^
+make: *** [Makefile:70: PrimeMemoryDumping.o] Error 1
